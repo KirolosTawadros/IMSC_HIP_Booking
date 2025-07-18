@@ -1,0 +1,14 @@
+{
+  "login": "Login",
+  "register": "Register",
+  "phone": "Phone Number",
+  "hospital": "Hospital",
+  "password": "Password",
+  "welcome": "Welcome",
+  "select_language": "Select Language",
+  "arabic": "Arabic",
+  "english": "English",
+  "logout": "Logout",
+  "error": "Something went wrong",
+  "loading": "Loading..."
+} 

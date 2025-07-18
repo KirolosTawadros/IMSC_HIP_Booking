@@ -1,0 +1,26 @@
+{
+  "name": "backend",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon ./bin/www",
+    "seed": "node scripts/seedData.js"
+  },
+  "dependencies": {
+    "@react-native-picker/picker": "^2.11.1",
+    "bcryptjs": "^3.0.2",
+    "cookie-parser": "~1.4.4",
+    "cors": "^2.8.5",
+    "debug": "~2.6.9",
+    "dotenv": "^16.0.3",
+    "express": "~4.16.1",
+    "jade": "^1.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^7.0.3",
+    "morgan": "~1.9.1"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}

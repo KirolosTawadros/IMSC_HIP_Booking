@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "046b2dad-a540-46fc-9199-48e0ea1280d3"
+      }
+    },
+    "android": {
+      "package": "com.kirolos.tawadros.hip_booking"
+    }
+  }
+}
