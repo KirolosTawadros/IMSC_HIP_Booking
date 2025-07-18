@@ -169,3 +169,12 @@ Staff: staff@imsc.com / staff123
 رقم الهاتف: 01012345678
 اسم المستشفى: مستشفى القصر العيني
 المحافظة: القاهرة الكبرى
+
+
+
+
+
+
+
+kirolostawadros
+VqdbVd7MT48SXqLB
