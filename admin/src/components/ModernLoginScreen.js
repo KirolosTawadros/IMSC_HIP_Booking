@@ -37,7 +37,7 @@ const ModernLoginScreen = ({ onLogin }) => {
     setError('');
 
     try {
-      const response = await axios.post('http://localhost:3000/api/staff/login', formData);
+      const response = await axios.post('https://imsc-hip-booking-admin.onrender.com/', formData);
       onLogin(response.data);
     } catch (error) {
       setError(error.response?.data?.message || 'فشل في تسجيل الدخول');
