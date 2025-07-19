@@ -17,7 +17,7 @@ const TimeSlotManagement = ({ user, onBack }) => {
   const fetchTimeSlots = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('https://imsc-hip-booking-admin.onrender.com/api/time-slots');
+      const res = await axios.get('http://localhost:3000/api/time-slots/api/time-slots');
       setTimeSlots(res.data);
     } catch (e) {
       alert('فشل تحميل الفترات الزمنية');
