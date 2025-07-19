@@ -72,7 +72,7 @@ const ModernHospitalManagement = ({ user, onBack }) => {
   const fetchHospitals = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:3000/api/hospitals');
+      const response = await axios.get('https://imsc-hip-booking-back-end.onrender.com/api/hospitals');
       const hospitalsWithIds = response.data.map((hospital, index) => ({
         ...hospital,
         id: hospital._id || index,
@@ -92,10 +92,10 @@ const ModernHospitalManagement = ({ user, onBack }) => {
     e.preventDefault();
     try {
       if (editingHospital) {
-        await axios.put(`http://localhost:3000/api/hospitals/${editingHospital.id}`, formData);
+        await axios.put(`https://imsc-hip-booking-back-end.onrender.com/api/hospitals/${editingHospital.id}`, formData);
         setSnackbar({ open: true, message: 'تم تحديث المستشفى بنجاح', severity: 'success' });
       } else {
-        await axios.post('http://localhost:3000/api/hospitals', formData);
+        await axios.post('https://imsc-hip-booking-back-end.onrender.com/api/hospitals', formData);
         setSnackbar({ open: true, message: 'تم إضافة المستشفى بنجاح', severity: 'success' });
       }
       
@@ -121,7 +121,7 @@ const ModernHospitalManagement = ({ user, onBack }) => {
   const handleDelete = async (hospitalId) => {
     if (window.confirm('هل أنت متأكد من حذف هذا المستشفى؟')) {
       try {
-        await axios.delete(`http://localhost:3000/api/hospitals/${hospitalId}`);
+        await axios.delete(`https://imsc-hip-booking-back-end.onrender.com/api/hospitals/${hospitalId}`);
         setSnackbar({ open: true, message: 'تم حذف المستشفى بنجاح', severity: 'success' });
         fetchHospitals();
       } catch (error) {

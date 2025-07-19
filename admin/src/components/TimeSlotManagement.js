@@ -17,7 +17,7 @@ const TimeSlotManagement = ({ user, onBack }) => {
   const fetchTimeSlots = async () => {
     setLoading(true);
     try {
-      const res = await axios.get('http://localhost:3000/api/time-slots/api/time-slots');
+      const res = await axios.get('https://imsc-hip-booking-back-end.onrender.com/api/time-slots/api/time-slots');
       setTimeSlots(res.data);
     } catch (e) {
       alert('فشل تحميل الفترات الزمنية');
@@ -46,9 +46,9 @@ const TimeSlotManagement = ({ user, onBack }) => {
     if (!form.start_time || !form.end_time) return alert('يرجى إدخال وقت البداية والنهاية');
     try {
       if (editingSlot) {
-        await axios.put(`http://localhost:3000/api/time-slots/${editingSlot._id}`, form);
+        await axios.put(`https://imsc-hip-booking-back-end.onrender.com/api/time-slots/${editingSlot._id}`, form);
       } else {
-        await axios.post('http://localhost:3000/api/time-slots', form);
+        await axios.post('https://imsc-hip-booking-back-end.onrender.com/api/time-slots', form);
       }
       fetchTimeSlots();
       handleCloseDialog();
@@ -60,7 +60,7 @@ const TimeSlotManagement = ({ user, onBack }) => {
   const handleDelete = async (id) => {
     if (!window.confirm('هل أنت متأكد من حذف هذه الفترة؟')) return;
     try {
-      await axios.delete(`http://localhost:3000/api/time-slots/${id}`);
+      await axios.delete(`https://imsc-hip-booking-back-end.onrender.com/api/time-slots/${id}`);
       fetchTimeSlots();
     } catch (e) {
       alert('فشل حذف الفترة الزمنية');

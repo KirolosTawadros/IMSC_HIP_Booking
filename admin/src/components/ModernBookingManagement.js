@@ -58,7 +58,7 @@ const ModernBookingManagement = ({ user, onBack }) => {
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:3000/api/staff/bookings');
+      const response = await axios.get('https://imsc-hip-booking-back-end.onrender.com/api/staff/bookings');
       const bookingsWithIds = response.data.map((booking, index) => ({
         ...booking,
         id: booking._id || index,
@@ -84,8 +84,8 @@ const ModernBookingManagement = ({ user, onBack }) => {
     try {
       // endpoint المناسب
       const endpoint = newStatus === 'approved'
-        ? `http://localhost:3000/api/staff/bookings/${bookingId}/approve`
-        : `http://localhost:3000/api/staff/bookings/${bookingId}/reject`;
+        ? `https://imsc-hip-booking-back-end.onrender.com/api/staff/bookings/${bookingId}/approve`
+        : `https://imsc-hip-booking-back-end.onrender.com/api/staff/bookings/${bookingId}/reject`;
       // جهز البيانات
       const data = {
         staff_id: user._id,

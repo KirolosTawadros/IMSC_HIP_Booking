@@ -82,7 +82,7 @@ const ModernAdminUserManagement = ({ user, onBack }) => {
   const fetchDoctors = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:3000/api/users');
+      const response = await axios.get('https://imsc-hip-booking-back-end.onrender.com/api/users');
       const doctorsWithIds = response.data.map((doctor, index) => ({
         ...doctor,
         id: doctor._id || index,
@@ -105,7 +105,7 @@ const ModernAdminUserManagement = ({ user, onBack }) => {
 
   const fetchHospitals = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/hospitals');
+      const response = await axios.get('https://imsc-hip-booking-back-end.onrender.com/api/hospitals');
       setHospitals(response.data);
     } catch (error) {
       console.error('Error fetching hospitals:', error);
@@ -115,7 +115,7 @@ const ModernAdminUserManagement = ({ user, onBack }) => {
   const handleUpdateDoctor = async (e) => {
     e.preventDefault();
     try {
-      await axios.put(`http://localhost:3000/api/users/${selectedDoctor.id}`, formData);
+      await axios.put(`https://imsc-hip-booking-back-end.onrender.com/api/users/${selectedDoctor.id}`, formData);
       setSnackbar({ open: true, message: 'تم تحديث بيانات الطبيب بنجاح', severity: 'success' });
       setDialogOpen(false);
       setSelectedDoctor(null);
@@ -130,7 +130,7 @@ const ModernAdminUserManagement = ({ user, onBack }) => {
   const handleDeleteDoctor = async (doctorId) => {
     if (window.confirm('هل أنت متأكد من حذف هذا الطبيب؟')) {
       try {
-        await axios.delete(`http://localhost:3000/api/users/${doctorId}`);
+        await axios.delete(`https://imsc-hip-booking-back-end.onrender.com/api/users/${doctorId}`);
         setSnackbar({ open: true, message: 'تم حذف الطبيب بنجاح', severity: 'success' });
         fetchDoctors();
       } catch (error) {

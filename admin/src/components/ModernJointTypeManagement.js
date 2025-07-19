@@ -75,8 +75,8 @@ const ModernJointTypeManagement = ({ user, onBack }) => {
   const fetchData = async () => {
     try {
       const [jointTypesResponse, capacitiesResponse] = await Promise.all([
-        axios.get('http://localhost:3000/api/joint-types'),
-        axios.get('http://localhost:3000/api/joint-types/capacities')
+        axios.get('https://imsc-hip-booking-back-end.onrender.com/api/joint-types'),
+        axios.get('https://imsc-hip-booking-back-end.onrender.com/api/joint-types/capacities')
       ]);
       
       const jointTypesWithIds = jointTypesResponse.data.map((jointType, index) => ({
@@ -101,7 +101,7 @@ const ModernJointTypeManagement = ({ user, onBack }) => {
 
   const fetchTimeSlots = async () => {
     try {
-      const res = await axios.get('http://localhost:3000/api/time-slots');
+      const res = await axios.get('https://imsc-hip-booking-back-end.onrender.com/api/time-slots');
       setTimeSlots(res.data);
     } catch (error) {
       setSnackbar({ open: true, message: 'خطأ في تحميل الفترات الزمنية', severity: 'error' });
@@ -133,10 +133,10 @@ const ModernJointTypeManagement = ({ user, onBack }) => {
     }
     try {
       if (editingJointType) {
-        await axios.put(`http://localhost:3000/api/joint-types/${editingJointType.id}`, filteredFormData);
+        await axios.put(`https://imsc-hip-booking-back-end.onrender.com/api/joint-types/${editingJointType.id}`, filteredFormData);
         setSnackbar({ open: true, message: 'تم تحديث نوع المفصل بنجاح', severity: 'success' });
       } else {
-        await axios.post('http://localhost:3000/api/joint-types', filteredFormData);
+        await axios.post('https://imsc-hip-booking-back-end.onrender.com/api/joint-types', filteredFormData);
         setSnackbar({ open: true, message: 'تم إضافة نوع المفصل بنجاح', severity: 'success' });
       }
       
@@ -153,7 +153,7 @@ const ModernJointTypeManagement = ({ user, onBack }) => {
   const handleEdit = async (jointType) => {
     setEditingJointType(jointType);
     try {
-      const res = await axios.get('http://localhost:3000/api/joint-types/capacities');
+      const res = await axios.get('https://imsc-hip-booking-back-end.onrender.com/api/joint-types/capacities');
       const relatedCapacities = (res.data || []).filter(
         cap => (cap.joint_type_id && ((cap.joint_type_id._id || cap.joint_type_id) == jointType._id))
       );
@@ -188,7 +188,7 @@ const ModernJointTypeManagement = ({ user, onBack }) => {
   const handleDelete = async (jointTypeId) => {
     if (window.confirm('هل أنت متأكد من حذف هذا النوع من المفاصل؟')) {
       try {
-        await axios.delete(`http://localhost:3000/api/joint-types/${jointTypeId}`);
+        await axios.delete(`https://imsc-hip-booking-back-end.onrender.com/api/joint-types/${jointTypeId}`);
         setSnackbar({ open: true, message: 'تم حذف نوع المفصل بنجاح', severity: 'success' });
         fetchData();
       } catch (error) {

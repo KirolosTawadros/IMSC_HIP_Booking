@@ -59,7 +59,7 @@ const ModernDoctorRequestsManagement = ({ user, onBack }) => {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:3000/api/users/pending');
+      const response = await axios.get('https://imsc-hip-booking-back-end.onrender.com/api/users/pending');
       const requestsWithIds = response.data.map((request, index) => ({
         ...request,
         id: request._id || index,
@@ -82,7 +82,7 @@ const ModernDoctorRequestsManagement = ({ user, onBack }) => {
 
   const handleUpdateStatus = async (requestId, status, rejectionReason = '') => {
     try {
-      await axios.patch(`http://localhost:3000/api/users/${requestId}/status`, {
+      await axios.patch(`https://imsc-hip-booking-back-end.onrender.com/api/users/${requestId}/status`, {
         status,
         rejectionReason
       });

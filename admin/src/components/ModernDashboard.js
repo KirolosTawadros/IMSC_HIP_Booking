@@ -63,8 +63,8 @@ const ModernDashboard = ({ user, onLogout, onNavigate }) => {
   const fetchStats = async () => {
     try {
       const [allBookings, pendingBookings] = await Promise.all([
-        axios.get('http://localhost:3000/api/staff/bookings'),
-        axios.get('http://localhost:3000/api/staff/bookings/pending')
+        axios.get('https://imsc-hip-booking-back-end.onrender.com/api/staff/bookings'),
+        axios.get('https://imsc-hip-booking-back-end.onrender.com/api/staff/bookings/pending')
       ]);
 
       const total = allBookings.data.length;
