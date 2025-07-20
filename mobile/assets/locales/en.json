@@ -33,5 +33,13 @@
   "joint_type": "Joint Type",
   "time_slot": "Time Slot",
   "notifications": "Notifications",
-  "pending_approval": "Pending Approval"
+  "pending_approval": "Pending Approval",
+  "phone": "Phone Number",
+  "password": "Password",
+  "welcome": "Welcome",
+  "select_language": "Select Language",
+  "logout": "Logout",
+  "error": "Something went wrong",
+  "loading": "Loading...",
+  "full": "Full"
 } 

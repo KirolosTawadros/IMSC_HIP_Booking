@@ -33,5 +33,13 @@
   "joint_type": "نوع المفصل",
   "time_slot": "الميعاد",
   "notifications": "الإشعارات",
-  "pending_approval": "في انتظار الموافقة"
+  "pending_approval": "في انتظار الموافقة",
+  "phone": "رقم الهاتف",
+  "password": "كلمة المرور",
+  "welcome": "مرحباً",
+  "select_language": "اختر اللغة",
+  "logout": "تسجيل الخروج",
+  "error": "حدث خطأ ما",
+  "loading": "جاري التحميل...",
+  "full": "ممتلئ"
 } 

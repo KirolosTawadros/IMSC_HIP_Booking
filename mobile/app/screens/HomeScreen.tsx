@@ -77,7 +77,7 @@ const HomeScreen = () => {
           </TouchableOpacity>
         </View>
         <View style={styles.card}>
-          <Text style={styles.welcome}>مرحباً 👋</Text>
+          <Text style={styles.welcome}>{t('welcome')}</Text>
           <Text style={styles.doctor}>{doctorName}</Text>
           {doctorGovernorate && (
             <Text style={styles.governorate}>من {doctorGovernorate}</Text>

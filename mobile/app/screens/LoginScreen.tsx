@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -88,79 +88,81 @@ const LoginScreen = () => {
   return (
     <LinearGradient colors={[COLORS.primary, COLORS.secondary]} style={styles.gradient}>
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <MaterialCommunityIcons 
-              name="hospital-building" 
-              size={40} 
-              color={COLORS.white} 
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+              <MaterialCommunityIcons 
+                name="hospital-building" 
+                size={40} 
+                color={COLORS.white} 
+              />
+            </View>
+            <Text style={styles.brandTitle}>IMSC</Text>
+            <Text style={styles.brandSubtitle}>المركز الدولي للخدمات الطبية</Text>
+            <Text style={styles.brandDescription}>تسجيل دخول الأطباء</Text>
+          </View>
+          <View style={styles.card}>
+            <Text style={styles.title}>{t('login')}</Text>
+            <TextInput
+              style={styles.input}
+              placeholder={t('phone_placeholder')}
+              keyboardType="phone-pad"
+              value={phone}
+              onChangeText={setPhone}
+              placeholderTextColor={COLORS.muted}
+              editable={!loading}
             />
-          </View>
-          <Text style={styles.brandTitle}>IMSC</Text>
-          <Text style={styles.brandSubtitle}>المركز الدولي للخدمات الطبية</Text>
-          <Text style={styles.brandDescription}>تسجيل دخول الأطباء</Text>
-        </View>
-        <View style={styles.card}>
-          <Text style={styles.title}>{t('login')}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder={t('phone_placeholder')}
-            keyboardType="phone-pad"
-            value={phone}
-            onChangeText={setPhone}
-            placeholderTextColor={COLORS.muted}
-            editable={!loading}
-          />
-          <Text style={styles.label}>{t('hospital')}</Text>
-          <DropDownPicker
-            open={open}
-            value={hospitalId}
-            items={hospitalItems}
-            setOpen={setOpen}
-            setValue={setHospitalId}
-            setItems={setHospitalItems}
-            placeholder={t('select_hospital')}
-            loading={loadingHospitals}
-            disabled={loadingHospitals || loading}
-            style={{ marginBottom: 16, borderColor: COLORS.border, backgroundColor: '#f7fafd', zIndex: 1000 }}
-            dropDownDirection="AUTO"
-            listMode="SCROLLVIEW"
-            zIndex={1000}
-            zIndexInverse={1000}
-            rtl={true}
-          />
-          <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 16 }}>
-            <TouchableOpacity onPress={() => { i18n.locale = 'ar'; forceUpdate(); }} style={{ marginHorizontal: 8 }}>
-              <Text style={{ color: i18n.locale === 'ar' ? '#1976d2' : '#888', fontWeight: 'bold' }}>{t('arabic')}</Text>
+            <Text style={styles.label}>{t('hospital')}</Text>
+            <DropDownPicker
+              open={open}
+              value={hospitalId}
+              items={hospitalItems}
+              setOpen={setOpen}
+              setValue={setHospitalId}
+              setItems={setHospitalItems}
+              placeholder={t('select_hospital')}
+              loading={loadingHospitals}
+              disabled={loadingHospitals || loading}
+              style={{ marginBottom: 16, borderColor: COLORS.border, backgroundColor: '#f7fafd', zIndex: 1000 }}
+              dropDownDirection="AUTO"
+              listMode="SCROLLVIEW"
+              zIndex={1000}
+              zIndexInverse={1000}
+              rtl={true}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 16 }}>
+              <TouchableOpacity onPress={() => { i18n.locale = 'ar'; forceUpdate(); }} style={{ marginHorizontal: 8 }}>
+                <Text style={{ color: i18n.locale === 'ar' ? '#1976d2' : '#888', fontWeight: 'bold' }}>{t('arabic')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { i18n.locale = 'en'; forceUpdate(); }} style={{ marginHorizontal: 8 }}>
+                <Text style={{ color: i18n.locale === 'en' ? '#1976d2' : '#888', fontWeight: 'bold' }}>{t('english')}</Text>
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity 
+              style={[styles.button, loading && styles.buttonDisabled]} 
+              onPress={handleLogin} 
+              activeOpacity={0.85}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <MaterialCommunityIcons name="login" size={SIZES.icon} color="#fff" style={{ marginEnd: 8 }} />
+                  <Text style={styles.buttonText}>{t('login_button')}</Text>
+                </>
+              )}
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => { i18n.locale = 'en'; forceUpdate(); }} style={{ marginHorizontal: 8 }}>
-              <Text style={{ color: i18n.locale === 'en' ? '#1976d2' : '#888', fontWeight: 'bold' }}>{t('english')}</Text>
-            </TouchableOpacity>
           </View>
-          <TouchableOpacity 
-            style={[styles.button, loading && styles.buttonDisabled]} 
-            onPress={handleLogin} 
-            activeOpacity={0.85}
-            disabled={loading}
+          <TouchableOpacity
+            style={{ marginTop: 24, alignSelf: 'center' }}
+            onPress={() => navigation.navigate('Register')}
           >
-            {loading ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <>
-                <MaterialCommunityIcons name="login" size={SIZES.icon} color="#fff" style={{ marginEnd: 8 }} />
-                <Text style={styles.buttonText}>{t('login_button')}</Text>
-              </>
-            )}
+            <Text style={{ color: COLORS.primary, fontWeight: 'bold' }}>
+              {t('register')}
+            </Text>
           </TouchableOpacity>
-        </View>
-        <TouchableOpacity
-          style={{ marginTop: 24 }}
-          onPress={() => navigation.navigate('Register')}
-        >
-          <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: 16 }}>
-            {t('no_account')}
-          </Text>
-        </TouchableOpacity>
+        </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>
   );

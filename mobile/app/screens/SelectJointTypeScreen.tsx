@@ -77,7 +77,7 @@ const SelectJointTypeScreen = () => {
       <LinearGradient colors={[COLORS.primary, COLORS.secondary]} style={styles.gradient}>
         <View style={styles.container}>
           <ActivityIndicator size="large" color={COLORS.card} />
-          <Text style={styles.loadingText}>جاري التحميل...</Text>
+          <Text style={styles.loadingText}>{t('loading')}</Text>
         </View>
       </LinearGradient>
     );
