@@ -53,15 +53,28 @@ const SelectTimeSlotScreen = () => {
         return;
       }
       const response = await getJointTypeSlotsWithStatus(jointTypeId, global.currentUser.governorate, date);
-      // عدل المخرجات لتناسب العرض
-      setTimeSlots(response.data.map((slot: any) => ({
-        id: slot._id, // استخدم الـ _id الحقيقي
-        start_time: slot.start_time,
-        end_time: slot.end_time,
-        available: slot.status === 'open' ? slot.remaining : 0,
-        capacity: slot.capacity,
-        status: slot.status
-      })));
+      const now = new Date();
+      setTimeSlots(response.data.map((slot: any) => {
+        // بناء تاريخ/وقت البداية والنهاية للفترة
+        const slotDate = date; // المتغير date هو تاريخ اليوم المختار
+        const slotStart = new Date(`${slotDate}T${slot.start_time}:00`);
+        const slotEnd = new Date(`${slotDate}T${slot.end_time}:00`);
+
+        // لو التاريخ هو اليوم الحالي، والوقت الحالي بعد نهاية الفترة، اجعلها مغلقة
+        let status = slot.status;
+        if (slotDate === now.toISOString().split('T')[0] && now > slotEnd) {
+          status = 'closed';
+        }
+
+        return {
+          id: slot._id,
+          start_time: slot.start_time,
+          end_time: slot.end_time,
+          available: status === 'open' ? slot.remaining : 0,
+          capacity: slot.capacity,
+          status
+        };
+      }));
       console.log('DEBUG: timeSlots', response.data);
     } catch (error: any) {
       console.error('Error loading slots:', error);
