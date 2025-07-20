@@ -1,10 +1,7 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 
-const API_BASE_URL =
-  Platform.OS === 'android'
-    ? 'http://10.0.2.2:3000/api'
-    : 'http://192.168.1.41:3000/api';
+const API_BASE_URL = 'https://imsc-hip-booking-back-end.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
