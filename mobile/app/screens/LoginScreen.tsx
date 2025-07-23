@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, ScrollView, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, ScrollView, Keyboard, TouchableWithoutFeedback, Dimensions } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -94,6 +94,12 @@ const LoginScreen = () => {
     paddingHorizontal: 16,
     marginBottom: 16,
     fontSize: 16,
+    width: '100%' as const,
+  };
+  const dropDownContainerStyle = {
+    ...inputStyle,
+    marginTop: 0,
+    width: '100%' as const,
   };
 
   return (
@@ -135,9 +141,9 @@ const LoginScreen = () => {
                 placeholder={t('select_hospital')}
                 loading={loadingHospitals}
                 disabled={loadingHospitals || loading}
-                containerStyle={{ ...inputStyle, marginBottom: 16 }}
+                containerStyle={{ width: '100%', marginBottom: 16 }}
                 style={inputStyle}
-                dropDownContainerStyle={{ ...inputStyle, marginTop: 0 }}
+                dropDownContainerStyle={dropDownContainerStyle}
                 dropDownDirection="AUTO"
                 listMode="SCROLLVIEW"
                 zIndex={1000}
