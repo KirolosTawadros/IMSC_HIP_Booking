@@ -85,19 +85,19 @@ const HomeScreen = () => {
         </View>
         <TouchableOpacity style={styles.button} onPress={handleNewBooking} activeOpacity={0.85}>
           <MaterialCommunityIcons name="plus-circle" size={SIZES.icon + 8} color="#fff" style={{ marginEnd: 8 }} />
-          <Text style={styles.buttonText}>احجز عملية جديدة</Text>
+          <Text style={styles.buttonText}>{t('new_booking')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.button, styles.secondaryBtn]} onPress={handleMyBookings} activeOpacity={0.85}>
           <MaterialCommunityIcons name="calendar-check" size={SIZES.icon} color={COLORS.primary} style={{ marginEnd: 8 }} />
-          <Text style={[styles.buttonText, { color: COLORS.primary }]}>حجوزاتي</Text>
+          <Text style={[styles.buttonText, { color: COLORS.primary }]}>{t('my_bookings')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.button, styles.notificationsBtn]} onPress={handleNotifications} activeOpacity={0.85}>
           <MaterialCommunityIcons name="bell" size={SIZES.icon} color="#fff" style={{ marginEnd: 8 }} />
-          <Text style={styles.buttonText}>الإشعارات</Text>
+          <Text style={styles.buttonText}>{t('notifications')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.button, styles.logoutBtn]} onPress={handleLogout} activeOpacity={0.85}>
           <MaterialCommunityIcons name="logout" size={SIZES.icon} color="#fff" style={{ marginEnd: 8 }} />
-          <Text style={styles.buttonText}>تسجيل الخروج</Text>
+          <Text style={styles.buttonText}>{t('logout')}</Text>
         </TouchableOpacity>
       </View>
     </LinearGradient>

@@ -41,5 +41,18 @@
   "logout": "Logout",
   "error": "Something went wrong",
   "loading": "Loading...",
-  "full": "Full"
+  "full": "Full",
+  "cancel_booking": "Cancel Booking",
+  "cancel_booking_confirm": "Are you sure you want to cancel this booking?",
+  "cancel_booking_success": "Booking cancelled successfully",
+  "cancel_booking_error": "Failed to cancel booking",
+  "cannot_cancel_past": "Cannot cancel past bookings",
+  "cannot_cancel_started": "Cannot cancel bookings that have already started",
+  "no_bookings_yet": "No bookings yet",
+  "rejected": "Rejected",
+  "unknown": "Unknown",
+  "cancel": "Cancel",
+  "please_login_first": "Please login first",
+  "new_booking": "New Booking",
+  "my_bookings": "My Bookings"
 } 

@@ -147,4 +147,53 @@ router.get('/availability', async (req, res) => {
   }
 });
 
+// DELETE booking (cancel booking)
+router.delete('/:bookingId', async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.bookingId)
+      .populate('joint_type_id')
+      .populate('time_slot_id');
+    
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if booking is in the future
+    const bookingDate = new Date(booking.date);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    if (bookingDate < today) {
+      return res.status(400).json({ message: 'Cannot cancel past bookings' });
+    }
+
+    // Check if booking is today but time has passed
+    if (bookingDate.getTime() === today.getTime()) {
+      const currentTime = now.getHours() * 60 + now.getMinutes(); // current time in minutes
+      const [hours, minutes] = booking.time_slot_id.start_time.split(':');
+      const bookingTime = parseInt(hours) * 60 + parseInt(minutes); // booking time in minutes
+      
+      if (currentTime >= bookingTime) {
+        return res.status(400).json({ message: 'Cannot cancel bookings for time slots that have already started' });
+      }
+    }
+
+    // Delete the booking
+    await Booking.findByIdAndDelete(req.params.bookingId);
+    
+    // Create notification for booking cancellation
+    const notification = new Notification({
+      user_id: booking.user_id,
+      title: 'تم إلغاء الحجز',
+      message: `تم إلغاء حجزك بنجاح.`,
+      type: 'booking_cancelled'
+    });
+    await notification.save();
+
+    res.json({ message: 'Booking cancelled successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router; 

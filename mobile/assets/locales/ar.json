@@ -41,5 +41,18 @@
   "logout": "تسجيل الخروج",
   "error": "حدث خطأ ما",
   "loading": "جاري التحميل...",
-  "full": "ممتلئ"
+  "full": "ممتلئ",
+  "cancel_booking": "إلغاء الحجز",
+  "cancel_booking_confirm": "هل أنت متأكد من إلغاء هذا الحجز؟",
+  "cancel_booking_success": "تم إلغاء الحجز بنجاح",
+  "cancel_booking_error": "فشل في إلغاء الحجز",
+  "cannot_cancel_past": "لا يمكن إلغاء الحجوزات السابقة",
+  "cannot_cancel_started": "لا يمكن إلغاء الحجوزات التي بدأت بالفعل",
+  "no_bookings_yet": "لا توجد حجوزات بعد",
+  "rejected": "مرفوض",
+  "unknown": "غير معروف",
+  "cancel": "إلغاء",
+  "please_login_first": "يرجى تسجيل الدخول أولاً",
+  "new_booking": "احجز عملية جديدة",
+  "my_bookings": "حجوزاتي"
 } 

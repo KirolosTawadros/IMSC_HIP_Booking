@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOW } from '../../constants/theme';
-import { getUserBookings } from '../../services/api';
+import { getUserBookings, cancelBooking } from '../../services/api';
 import { t } from '../../i18n';
 
 type Booking = {
@@ -26,6 +26,7 @@ type Booking = {
 const MyBookingsScreen = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [cancelling, setCancelling] = useState<string | null>(null);
 
   // Refresh data every time screen comes into focus
   useFocusEffect(
@@ -44,10 +45,70 @@ const MyBookingsScreen = () => {
       const response = await getUserBookings(global.currentUser._id);
       setBookings(response.data);
     } catch (error: any) {
-      Alert.alert('خطأ', 'فشل في تحميل الحجوزات');
+      Alert.alert(t('error'), 'فشل في تحميل الحجوزات');
     } finally {
       setLoading(false);
     }
+  };
+
+  const isBookingCancellable = (booking: Booking) => {
+    const bookingDate = new Date(booking.date);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    // If booking is in the past, not cancellable
+    if (bookingDate < today) {
+      return false;
+    }
+    
+    // If booking is today, check if time has passed
+    if (bookingDate.getTime() === today.getTime()) {
+      const currentTime = now.getHours() * 60 + now.getMinutes();
+      const [hours, minutes] = booking.time_slot_id.start_time.split(':');
+      const bookingTime = parseInt(hours) * 60 + parseInt(minutes);
+      
+      if (currentTime >= bookingTime) {
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
+  const handleCancelBooking = async (booking: Booking) => {
+    Alert.alert(
+      t('cancel_booking'),
+      t('cancel_booking_confirm'),
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('cancel_booking'),
+          style: 'destructive',
+          onPress: async () => {
+            setCancelling(booking._id);
+            try {
+              await cancelBooking(booking._id);
+              Alert.alert(t('cancel_booking_success'));
+              loadBookings(); // Reload bookings
+            } catch (error: any) {
+              let errorMessage = t('cancel_booking_error');
+              if (error.response?.data?.message) {
+                if (error.response.data.message.includes('past')) {
+                  errorMessage = t('cannot_cancel_past');
+                } else if (error.response.data.message.includes('started')) {
+                  errorMessage = t('cannot_cancel_started');
+                } else {
+                  errorMessage = error.response.data.message;
+                }
+              }
+              Alert.alert(t('error'), errorMessage);
+            } finally {
+              setCancelling(null);
+            }
+          }
+        }
+      ]
+    );
   };
 
   const getStatusColor = (status: string) => {
@@ -128,6 +189,24 @@ const MyBookingsScreen = () => {
               <Text style={styles.dateLabel}>
                 {t('booking_date')}: {new Date(item.createdAt).toLocaleDateString('ar-EG')}
               </Text>
+
+              {/* Cancel Booking Button - Only show for cancellable bookings */}
+              {isBookingCancellable(item) && (
+                <TouchableOpacity
+                  style={[styles.cancelButton, cancelling === item._id && styles.cancelButtonDisabled]}
+                  onPress={() => handleCancelBooking(item)}
+                  disabled={cancelling === item._id}
+                >
+                  {cancelling === item._id ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="close-circle" size={16} color="#fff" style={{ marginEnd: 4 }} />
+                      <Text style={styles.cancelButtonText}>{t('cancel_booking')}</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              )}
             </View>
           )}
           ListEmptyComponent={
@@ -203,6 +282,24 @@ const styles = StyleSheet.create({
     color: COLORS.muted,
     marginTop: 12,
     textAlign: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#f44336',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  cancelButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   emptyContainer: {
     alignItems: 'center',

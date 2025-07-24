@@ -44,6 +44,10 @@ export const createBooking = (user_id, joint_type_id, date, time_slot_id) =>
 export const getAvailableSlots = (date, joint_type_id, user_id) => 
   api.get('/bookings/availability', { params: { date, joint_type_id, user_id } });
 
+// Cancel booking
+export const cancelBooking = (bookingId) => 
+  api.delete(`/bookings/${bookingId}`);
+
 // Notification APIs
 export const getUserNotifications = (userId) => 
   api.get(`/notifications/user/${userId}`);
