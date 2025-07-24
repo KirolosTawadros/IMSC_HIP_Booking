@@ -228,7 +228,8 @@ router.get('/:jointTypeId/capacities/with-slots', async (req, res) => {
           joint_type_id: jointTypeId,
           time_slot_id: slot._id,
           date: date,
-          governorate // تصفية حسب المحافظة
+          governorate, // تصفية حسب المحافظة
+          status: { $ne: 'cancelled' } // استبعاد الحجوزات الملغية
         });
         const remaining = Math.max(0, found.capacity - bookingsCount);
         return {

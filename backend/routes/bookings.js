@@ -55,7 +55,8 @@ router.post('/', async (req, res) => {
       date: req.body.date,
       joint_type_id: req.body.joint_type_id,
       time_slot_id: req.body.time_slot_id,
-      governorate: user.governorate // تصفية حسب المحافظة
+      governorate: user.governorate, // تصفية حسب المحافظة
+      status: { $ne: 'cancelled' } // استبعاد الحجوزات الملغية
     });
 
     if (existingBookings.length >= capacity.capacity) {
@@ -116,7 +117,8 @@ router.get('/availability', async (req, res) => {
     const existingBookings = await Booking.find({
       date: date,
       joint_type_id: joint_type_id,
-      governorate: user.governorate // تصفية حسب المحافظة
+      governorate: user.governorate, // تصفية حسب المحافظة
+      status: { $ne: 'cancelled' } // استبعاد الحجوزات الملغية
     });
 
     // Calculate available slots
