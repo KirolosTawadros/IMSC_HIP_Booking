@@ -56,5 +56,10 @@
   "new_booking": "New Booking",
   "my_bookings": "My Bookings",
   "cancelled": "Cancelled",
-  "already_cancelled": "Booking is already cancelled"
+  "already_cancelled": "Booking is already cancelled",
+  "markAllRead": "Mark All as Read",
+  "noNotifications": "No notifications",
+  "notificationPermission": "Notification Permission",
+  "notificationPermissionMessage": "We need your permission to send notifications about your booking status",
+  "notificationPermissionDenied": "Notification permission denied"
 } 

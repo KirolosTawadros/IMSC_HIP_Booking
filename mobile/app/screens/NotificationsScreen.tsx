@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOW } from '../../constants/theme';
 import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from '../../services/api';
 import { t } from '../../i18n';
+import NotificationService from '../../services/notifications';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -24,10 +25,10 @@ type Notification = {
   _id: string;
   title: string;
   message: string;
-  type: 'booking_approved' | 'booking_rejected' | 'booking_created';
+  type: 'booking_approved' | 'booking_rejected' | 'booking_created' | 'booking_cancelled';
   read: boolean;
   createdAt: string;
-  booking_id: {
+  booking_id?: {
     _id: string;
     joint_type_id: {
       name: string;
@@ -44,6 +45,35 @@ const NotificationsScreen = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Setup notification listeners
+  useEffect(() => {
+    const notificationListener = NotificationService.addNotificationListener((notification: any) => {
+      console.log('Notification received:', notification);
+      // Refresh notifications when new one arrives
+      loadNotifications();
+    });
+
+    const responseListener = NotificationService.addNotificationResponseListener((response: any) => {
+      console.log('Notification tapped:', response);
+      // Navigate to appropriate screen based on notification data
+      const data = response.notification.request.content.data;
+      if (data?.screen) {
+        navigation.navigate(data.screen as any);
+      }
+    });
+
+    return () => {
+      NotificationService.removeNotificationListener(notificationListener);
+      NotificationService.removeNotificationListener(responseListener);
+    };
+  }, [navigation]);
+
+  // Update badge count when notifications change
+  useEffect(() => {
+    const unreadCount = notifications.filter(n => !n.read).length;
+    NotificationService.setNotificationCount(unreadCount);
+  }, [notifications]);
+
   // Refresh data every time screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
@@ -59,7 +89,26 @@ const NotificationsScreen = () => {
 
     try {
       const response = await getUserNotifications(global.currentUser._id);
-      setNotifications(response.data);
+      const newNotifications = response.data;
+      
+      // Check for new unread notifications and send local notification
+      const unreadNotifications = newNotifications.filter((n: Notification) => !n.read);
+      if (unreadNotifications.length > 0) {
+        const latestNotification = unreadNotifications[0]; // Most recent unread notification
+        
+        // Send local notification for the latest unread notification
+        await NotificationService.sendLocalNotification(
+          latestNotification.title,
+          latestNotification.message,
+          { 
+            screen: 'Notifications',
+            notificationId: latestNotification._id,
+            type: latestNotification.type
+          }
+        );
+      }
+      
+      setNotifications(newNotifications);
     } catch (error: any) {
       Alert.alert('خطأ', 'فشل في تحميل الإشعارات');
     } finally {
@@ -105,6 +154,7 @@ const NotificationsScreen = () => {
       case 'booking_approved': return 'check-circle';
       case 'booking_rejected': return 'close-circle';
       case 'booking_created': return 'calendar-plus';
+      case 'booking_cancelled': return 'cancel';
       default: return 'bell';
     }
   };
@@ -114,6 +164,7 @@ const NotificationsScreen = () => {
       case 'booking_approved': return '#4caf50';
       case 'booking_rejected': return '#f44336';
       case 'booking_created': return '#2196f3';
+      case 'booking_cancelled': return '#9e9e9e';
       default: return '#9e9e9e';
     }
   };

@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOW } from '../../constants/theme';
 import { getUserBookings, cancelBooking } from '../../services/api';
 import { t } from '../../i18n';
+import NotificationService from '../../services/notifications';
 
 type Booking = {
   _id: string;
@@ -93,6 +94,19 @@ const MyBookingsScreen = () => {
             setCancelling(booking._id);
             try {
               await cancelBooking(booking._id);
+              
+              // إرسال إشعار محلي عند نجاح إلغاء الحجز
+              await NotificationService.sendLocalNotification(
+                'تم إلغاء الحجز بنجاح',
+                `تم إلغاء حجز ${booking.joint_type_id.name} في ${booking.date} الساعة ${booking.time_slot_id.start_time}`,
+                { 
+                  screen: 'MyBookings',
+                  bookingType: booking.joint_type_id.name,
+                  bookingDate: booking.date,
+                  bookingTime: booking.time_slot_id.start_time
+                }
+              );
+              
               Alert.alert(t('cancel_booking_success'));
               loadBookings(); // Reload bookings
             } catch (error: any) {

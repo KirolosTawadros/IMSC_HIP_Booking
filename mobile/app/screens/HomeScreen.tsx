@@ -7,6 +7,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOW } from '../../constants/theme';
 import { t } from '../../i18n';
 import i18n from '../../i18n';
+import NotificationService from '../../services/notifications';
+import { getUserNotifications } from '../../services/api';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -25,6 +27,65 @@ const HomeScreen = () => {
   // اسم الدكتور من البيانات المحفوظة
   const doctorName = global.currentUser?.name || 'د. أحمد';
   const doctorGovernorate = global.currentUser?.governorate || '';
+
+  // Request notification permissions when component mounts
+  React.useEffect(() => {
+    const setupNotifications = async () => {
+      if (global.currentUser?._id) {
+        try {
+          const hasPermission = await NotificationService.requestPermissions();
+          if (hasPermission) {
+            const pushToken = await NotificationService.getPushToken();
+            if (pushToken) {
+              // يمكن حفظ الـ push token في قاعدة البيانات هنا
+              console.log('Push token saved for user:', global.currentUser._id);
+            }
+          }
+        } catch (error) {
+          console.error('Error setting up notifications:', error);
+        }
+      }
+    };
+
+    setupNotifications();
+  }, []);
+
+  // Check for new notifications periodically
+  React.useEffect(() => {
+    const checkNotifications = async () => {
+      if (!global.currentUser?._id) return;
+      
+      try {
+        const response = await getUserNotifications(global.currentUser._id);
+        const unreadNotifications = response.data.filter((n: any) => !n.read);
+        
+        if (unreadNotifications.length > 0) {
+          const latestNotification = unreadNotifications[0];
+          
+          // Send local notification for the latest unread notification
+          await NotificationService.sendLocalNotification(
+            latestNotification.title,
+            latestNotification.message,
+            { 
+              screen: 'Notifications',
+              notificationId: latestNotification._id,
+              type: latestNotification.type
+            }
+          );
+        }
+      } catch (error) {
+        console.error('Error checking notifications:', error);
+      }
+    };
+
+    // Check notifications every 30 seconds
+    const interval = setInterval(checkNotifications, 30000);
+    
+    // Initial check
+    checkNotifications();
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const handleNewBooking = () => {
     if (!global.currentUser?._id) {

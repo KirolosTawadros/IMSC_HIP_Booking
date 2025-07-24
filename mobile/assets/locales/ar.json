@@ -56,5 +56,10 @@
   "new_booking": "احجز عملية جديدة",
   "my_bookings": "حجوزاتي",
   "cancelled": "ملغي",
-  "already_cancelled": "الحجز ملغي بالفعل"
+  "already_cancelled": "الحجز ملغي بالفعل",
+  "markAllRead": "تحديد الكل كمقروء",
+  "noNotifications": "لا توجد إشعارات",
+  "notificationPermission": "إذن الإشعارات",
+  "notificationPermissionMessage": "نحتاج إذنك لإرسال إشعارات عن حالة حجوزاتك",
+  "notificationPermissionDenied": "تم رفض إذن الإشعارات"
 } 

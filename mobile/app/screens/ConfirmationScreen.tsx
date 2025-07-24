@@ -7,6 +7,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SIZES, SHADOW } from '../../constants/theme';
 import { createBooking } from '../../services/api';
 import { t } from '../../i18n';
+import NotificationService from '../../services/notifications';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -46,6 +47,19 @@ const ConfirmationScreen = () => {
     setLoading(true);
     try {
       await createBooking(global.currentUser._id, jointTypeId, date, timeSlotId);
+      
+      // إرسال إشعار محلي عند نجاح الحجز
+      await NotificationService.sendLocalNotification(
+        'تم إنشاء الحجز بنجاح',
+        `تم إنشاء حجز ${jointType} في ${date} الساعة ${timeSlot}`,
+        { 
+          screen: 'MyBookings',
+          bookingType: jointType,
+          bookingDate: date,
+          bookingTime: timeSlot
+        }
+      );
+      
       Alert.alert('تم الحجز بنجاح!', 'تم تأكيد الحجز الخاص بك.', [
         { text: 'حسناً', onPress: () => navigation.navigate('Home') },
       ]);
