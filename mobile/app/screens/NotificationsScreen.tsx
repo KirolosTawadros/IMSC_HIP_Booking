@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,6 +8,7 @@ import { COLORS, SIZES, SHADOW } from '../../constants/theme';
 import { getUserNotifications, markNotificationAsRead, markAllNotificationsAsRead, deleteNotification } from '../../services/api';
 import { t } from '../../i18n';
 import NotificationService from '../../services/notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -44,6 +45,7 @@ const NotificationsScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Setup notification listeners
   useEffect(() => {
@@ -81,6 +83,12 @@ const NotificationsScreen = () => {
     }, [])
   );
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadNotifications();
+    setRefreshing(false);
+  }, []);
+
   const loadNotifications = async () => {
     if (!global.currentUser?._id) {
       setLoading(false);
@@ -93,19 +101,23 @@ const NotificationsScreen = () => {
       
       // Check for new unread notifications and send local notification
       const unreadNotifications = newNotifications.filter((n: Notification) => !n.read);
+      const LAST_NOTIFICATION_KEY = 'lastNotificationId';
       if (unreadNotifications.length > 0) {
         const latestNotification = unreadNotifications[0]; // Most recent unread notification
-        
-        // Send local notification for the latest unread notification
-        await NotificationService.sendLocalNotification(
-          latestNotification.title,
-          latestNotification.message,
-          { 
-            screen: 'Notifications',
-            notificationId: latestNotification._id,
-            type: latestNotification.type
-          }
-        );
+        const lastId = await AsyncStorage.getItem(LAST_NOTIFICATION_KEY);
+        if (latestNotification._id !== lastId) {
+          // Send local notification for the latest unread notification
+          await NotificationService.sendLocalNotification(
+            latestNotification.title,
+            latestNotification.message,
+            { 
+              screen: 'Notifications',
+              notificationId: latestNotification._id,
+              type: latestNotification.type
+            }
+          );
+          await AsyncStorage.setItem(LAST_NOTIFICATION_KEY, latestNotification._id);
+        }
       }
       
       setNotifications(newNotifications);
@@ -245,6 +257,9 @@ const NotificationsScreen = () => {
             </View>
           }
           contentContainerStyle={{ paddingBottom: 24 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
+          }
         />
       </View>
     </LinearGradient>

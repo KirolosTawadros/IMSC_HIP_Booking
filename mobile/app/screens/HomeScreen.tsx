@@ -9,6 +9,7 @@ import { t } from '../../i18n';
 import i18n from '../../i18n';
 import NotificationService from '../../services/notifications';
 import { getUserNotifications } from '../../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -52,6 +53,7 @@ const HomeScreen = () => {
 
   // Check for new notifications periodically
   React.useEffect(() => {
+    const LAST_NOTIFICATION_KEY = 'lastNotificationId';
     const checkNotifications = async () => {
       if (!global.currentUser?._id) return;
       
@@ -61,17 +63,22 @@ const HomeScreen = () => {
         
         if (unreadNotifications.length > 0) {
           const latestNotification = unreadNotifications[0];
-          
-          // Send local notification for the latest unread notification
-          await NotificationService.sendLocalNotification(
-            latestNotification.title,
-            latestNotification.message,
-            { 
-              screen: 'Notifications',
-              notificationId: latestNotification._id,
-              type: latestNotification.type
-            }
-          );
+          const lastId = await AsyncStorage.getItem(LAST_NOTIFICATION_KEY);
+
+          if (latestNotification._id !== lastId) {
+            // Send local notification
+            await NotificationService.sendLocalNotification(
+              latestNotification.title,
+              latestNotification.message,
+              {
+                screen: 'Notifications',
+                notificationId: latestNotification._id,
+                type: latestNotification.type,
+              }
+            );
+            // Save the latest notification id
+            await AsyncStorage.setItem(LAST_NOTIFICATION_KEY, latestNotification._id);
+          }
         }
       } catch (error) {
         console.error('Error checking notifications:', error);
@@ -165,10 +172,6 @@ const HomeScreen = () => {
           <MaterialCommunityIcons name="bell" size={SIZES.icon} color="#fff" style={{ marginEnd: 8 }} />
           <Text style={styles.buttonText}>{t('notifications')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, styles.testBtn]} onPress={handleTestNotification} activeOpacity={0.85}>
-          <MaterialCommunityIcons name="vibrate" size={SIZES.icon} color="#fff" style={{ marginEnd: 8 }} />
-          <Text style={styles.buttonText}>اختبار الإشعارات</Text>
-        </TouchableOpacity>
         <TouchableOpacity style={[styles.button, styles.logoutBtn]} onPress={handleLogout} activeOpacity={0.85}>
           <MaterialCommunityIcons name="logout" size={SIZES.icon} color="#fff" style={{ marginEnd: 8 }} />
           <Text style={styles.buttonText}>{t('logout')}</Text>
@@ -235,10 +238,6 @@ const styles = StyleSheet.create({
   },
   notificationsBtn: {
     backgroundColor: COLORS.info,
-    marginBottom: 0,
-  },
-  testBtn: {
-    backgroundColor: '#ff9800', // Orange color for test button
     marginBottom: 0,
   },
   logoutBtn: {

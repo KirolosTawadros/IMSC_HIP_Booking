@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -40,6 +40,7 @@ const SelectTimeSlotScreen = () => {
   const { jointType, jointTypeId, date } = (route.params as RouteParams) || { jointType: '', jointTypeId: '', date: '' };
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadAvailableSlots();
@@ -83,6 +84,12 @@ const SelectTimeSlotScreen = () => {
       setLoading(false);
     }
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadAvailableSlots();
+    setRefreshing(false);
+  }, []);
 
   const handleSelect = (timeSlot: TimeSlot) => {
     navigation.navigate('Confirmation', { 
@@ -142,6 +149,9 @@ const SelectTimeSlotScreen = () => {
             </View>
           }
           contentContainerStyle={{ paddingBottom: 24 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
+          }
         />
       </View>
     </LinearGradient>
