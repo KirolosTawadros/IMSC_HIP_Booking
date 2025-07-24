@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema({
   booking_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Booking',
-    required: true
+    required: false // Made optional for cancelled bookings
   },
   title: {
     type: String,
@@ -23,7 +23,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['booking_approved', 'booking_rejected', 'booking_created'],
+    enum: ['booking_approved', 'booking_rejected', 'booking_created', 'booking_cancelled'],
     required: true
   },
   read: {
