@@ -119,6 +119,15 @@ const HomeScreen = () => {
     navigation.navigate('Login');
   };
 
+  const handleTestNotification = async () => {
+    try {
+      await NotificationService.testNotification();
+      Alert.alert('نجح', 'تم إرسال إشعار تجريبي مع vibration');
+    } catch (error) {
+      Alert.alert('خطأ', 'فشل في إرسال الإشعار التجريبي');
+    }
+  };
+
   const [_, forceUpdate] = React.useReducer(x => x + 1, 0);
 
   return (
@@ -155,6 +164,10 @@ const HomeScreen = () => {
         <TouchableOpacity style={[styles.button, styles.notificationsBtn]} onPress={handleNotifications} activeOpacity={0.85}>
           <MaterialCommunityIcons name="bell" size={SIZES.icon} color="#fff" style={{ marginEnd: 8 }} />
           <Text style={styles.buttonText}>{t('notifications')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.button, styles.testBtn]} onPress={handleTestNotification} activeOpacity={0.85}>
+          <MaterialCommunityIcons name="vibrate" size={SIZES.icon} color="#fff" style={{ marginEnd: 8 }} />
+          <Text style={styles.buttonText}>اختبار الإشعارات</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.button, styles.logoutBtn]} onPress={handleLogout} activeOpacity={0.85}>
           <MaterialCommunityIcons name="logout" size={SIZES.icon} color="#fff" style={{ marginEnd: 8 }} />
@@ -222,6 +235,10 @@ const styles = StyleSheet.create({
   },
   notificationsBtn: {
     backgroundColor: COLORS.info,
+    marginBottom: 0,
+  },
+  testBtn: {
+    backgroundColor: '#ff9800', // Orange color for test button
     marginBottom: 0,
   },
   logoutBtn: {

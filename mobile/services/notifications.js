@@ -8,6 +8,7 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldVibrate: true, // إضافة vibration
   }),
 });
 
@@ -67,6 +68,7 @@ class NotificationService {
           body,
           data,
           sound: true,
+          vibrate: [0, 250, 250, 250], // نمط vibration: انتظار 0ms، vibration 250ms، انتظار 250ms، vibration 250ms
         },
         trigger: null, // Send immediately
       });
@@ -84,6 +86,7 @@ class NotificationService {
           body,
           data,
           sound: true,
+          vibrate: [0, 250, 250, 250], // نمط vibration: انتظار 0ms، vibration 250ms، انتظار 250ms، vibration 250ms
         },
         trigger: {
           date: new Date(date),
@@ -131,6 +134,20 @@ class NotificationService {
   // Add notification response listener (when user taps notification)
   addNotificationResponseListener(callback) {
     return Notifications.addNotificationResponseReceivedListener(callback);
+  }
+
+  // Test notification with vibration
+  async testNotification() {
+    try {
+      await this.sendLocalNotification(
+        'اختبار الإشعارات',
+        'هذا اختبار للإشعارات مع vibration',
+        { test: true, screen: 'Home' }
+      );
+      console.log('Test notification sent with vibration');
+    } catch (error) {
+      console.error('Error sending test notification:', error);
+    }
   }
 
   // Remove notification listener

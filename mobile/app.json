@@ -2,7 +2,7 @@
   "expo": {
     "name": "mobile",
     "slug": "mobile",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mobile",
@@ -41,7 +41,11 @@
         {
           "icon": "./assets/images/notification-icon.png",
           "color": "#1976d2",
-          "sounds": ["./assets/sounds/notification.wav"]
+          "sounds": ["./assets/sounds/notification.wav"],
+          "mode": "production",
+          "androidMode": "default",
+          "androidCollapsedTitle": "إشعار جديد",
+          "iosDisplayInForeground": true
         }
       ]
     ],
