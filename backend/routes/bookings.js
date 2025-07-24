@@ -178,8 +178,16 @@ router.delete('/:bookingId', async (req, res) => {
       }
     }
 
-    // Delete the booking
-    await Booking.findByIdAndDelete(req.params.bookingId);
+    // Check if booking is already cancelled
+    if (booking.status === 'cancelled') {
+      return res.status(400).json({ message: 'Booking is already cancelled' });
+    }
+
+    // Update booking status to cancelled instead of deleting
+    await Booking.findByIdAndUpdate(req.params.bookingId, {
+      status: 'cancelled',
+      notes: booking.notes ? `${booking.notes}\n[ملغي بواسطة الطبيب]` : '[ملغي بواسطة الطبيب]'
+    });
     
     // Create notification for booking cancellation
     const notification = new Notification({

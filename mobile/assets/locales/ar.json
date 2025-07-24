@@ -54,5 +54,7 @@
   "cancel": "إلغاء",
   "please_login_first": "يرجى تسجيل الدخول أولاً",
   "new_booking": "احجز عملية جديدة",
-  "my_bookings": "حجوزاتي"
+  "my_bookings": "حجوزاتي",
+  "cancelled": "ملغي",
+  "already_cancelled": "الحجز ملغي بالفعل"
 } 

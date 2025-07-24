@@ -114,6 +114,7 @@ const ModernBookingManagement = ({ user, onBack }) => {
       case 'pending': return 'warning';
       case 'approved': return 'success';
       case 'rejected': return 'error';
+      case 'cancelled': return 'default';
       default: return 'default';
     }
   };
@@ -123,6 +124,7 @@ const ModernBookingManagement = ({ user, onBack }) => {
       case 'pending': return 'في الانتظار';
       case 'approved': return 'تمت الموافقة';
       case 'rejected': return 'مرفوض';
+      case 'cancelled': return 'ملغي';
       default: return status;
     }
   };
@@ -238,7 +240,8 @@ const ModernBookingManagement = ({ user, onBack }) => {
     total: bookings.length,
     pending: bookings.filter(b => b.status === 'pending').length,
     approved: bookings.filter(b => b.status === 'approved').length,
-    rejected: bookings.filter(b => b.status === 'rejected').length
+    rejected: bookings.filter(b => b.status === 'rejected').length,
+    cancelled: bookings.filter(b => b.status === 'cancelled').length
   };
 
   return (
@@ -260,7 +263,7 @@ const ModernBookingManagement = ({ user, onBack }) => {
       <Container maxWidth="xl" sx={{ flexGrow: 1, py: 3 }}>
         {/* Stats Cards */}
         <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={2.4}>
             <Card sx={{ background: 'linear-gradient(135deg, #1976d2 0%, #42a5f5 100%)', color: 'white' }}>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
@@ -270,7 +273,7 @@ const ModernBookingManagement = ({ user, onBack }) => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={2.4}>
             <Card sx={{ background: 'linear-gradient(135deg, #ff9800 0%, #ffb74d 100%)', color: 'white' }}>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
@@ -280,7 +283,7 @@ const ModernBookingManagement = ({ user, onBack }) => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={2.4}>
             <Card sx={{ background: 'linear-gradient(135deg, #4caf50 0%, #81c784 100%)', color: 'white' }}>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
@@ -290,13 +293,23 @@ const ModernBookingManagement = ({ user, onBack }) => {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} sm={6} md={3}>
+          <Grid item xs={12} sm={6} md={2.4}>
             <Card sx={{ background: 'linear-gradient(135deg, #f44336 0%, #e57373 100%)', color: 'white' }}>
               <CardContent sx={{ textAlign: 'center' }}>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
                   {stats.rejected}
                 </Typography>
                 <Typography variant="body2">مرفوضة</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={2.4}>
+            <Card sx={{ background: 'linear-gradient(135deg, #9e9e9e 0%, #bdbdbd 100%)', color: 'white' }}>
+              <CardContent sx={{ textAlign: 'center' }}>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
+                  {stats.cancelled}
+                </Typography>
+                <Typography variant="body2">ملغية</Typography>
               </CardContent>
             </Card>
           </Grid>
@@ -328,6 +341,7 @@ const ModernBookingManagement = ({ user, onBack }) => {
                   <MenuItem value="pending">في الانتظار</MenuItem>
                   <MenuItem value="approved">تمت الموافقة</MenuItem>
                   <MenuItem value="rejected">مرفوض</MenuItem>
+                  <MenuItem value="cancelled">ملغي</MenuItem>
                 </Select>
               </FormControl>
             </Grid>

@@ -18,7 +18,7 @@ type Booking = {
     start_time: string;
   };
   date: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
   notes?: string;
   createdAt: string;
 };
@@ -52,6 +52,11 @@ const MyBookingsScreen = () => {
   };
 
   const isBookingCancellable = (booking: Booking) => {
+    // Only pending and approved bookings can be cancelled
+    if (booking.status !== 'pending' && booking.status !== 'approved') {
+      return false;
+    }
+
     const bookingDate = new Date(booking.date);
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -97,6 +102,8 @@ const MyBookingsScreen = () => {
                   errorMessage = t('cannot_cancel_past');
                 } else if (error.response.data.message.includes('started')) {
                   errorMessage = t('cannot_cancel_started');
+                } else if (error.response.data.message.includes('already cancelled')) {
+                  errorMessage = t('already_cancelled');
                 } else {
                   errorMessage = error.response.data.message;
                 }
@@ -116,6 +123,7 @@ const MyBookingsScreen = () => {
       case 'pending': return '#ff9800';
       case 'approved': return '#4caf50';
       case 'rejected': return '#f44336';
+      case 'cancelled': return '#9e9e9e';
       default: return '#9e9e9e';
     }
   };
@@ -125,6 +133,7 @@ const MyBookingsScreen = () => {
       case 'pending': return t('pending_approval');
       case 'approved': return t('approved');
       case 'rejected': return t('rejected');
+      case 'cancelled': return t('cancelled');
       default: return t('unknown');
     }
   };
@@ -134,6 +143,7 @@ const MyBookingsScreen = () => {
       case 'pending': return 'clock-outline';
       case 'approved': return 'check-circle';
       case 'rejected': return 'close-circle';
+      case 'cancelled': return 'cancel';
       default: return 'help-circle';
     }
   };

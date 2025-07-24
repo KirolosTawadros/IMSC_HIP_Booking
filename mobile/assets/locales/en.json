@@ -54,5 +54,7 @@
   "cancel": "Cancel",
   "please_login_first": "Please login first",
   "new_booking": "New Booking",
-  "my_bookings": "My Bookings"
+  "my_bookings": "My Bookings",
+  "cancelled": "Cancelled",
+  "already_cancelled": "Booking is already cancelled"
 } 
