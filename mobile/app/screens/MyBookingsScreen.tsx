@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, Alert, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -39,6 +39,14 @@ type Booking = {
   createdAt: string;
 };
 
+// نوع جديد لعنصر الأجندة
+interface AgendaEntry {
+  name: string;
+  height: number;
+  day: string;
+  booking: Booking;
+}
+
 const getStatusColor = (status: string) => {
   switch (status) {
     case 'pending': return '#ff9800';
@@ -75,44 +83,53 @@ const MyBookingsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [cancelling, setCancelling] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  // اجعل selectedDate يبدأ اليوم الحالي فقط ولا تضبطه في useEffect
+  const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [jointTypes, setJointTypes] = useState<any[]>([]);
+  const scheduledMotivationRef = useRef<string | null>(null);
+  const didSetSelectedDateRef = useRef(false);
 
-  // جلب أنواع المفاصل عند أول تحميل
+  // جلب أنواع المفاصل عند أول تحميل فقط
   useEffect(() => {
+    let mounted = true;
     const fetchJointTypes = async () => {
       try {
         const response = await getJointTypes();
-        setJointTypes(response.data);
+        if (mounted) setJointTypes(response.data);
       } catch (error) {
-        setJointTypes([]);
+        if (mounted) setJointTypes([]);
       }
     };
     fetchJointTypes();
+    return () => { mounted = false; };
   }, []);
 
-  // Refresh data every time screen comes into focus
-  useFocusEffect(
-    React.useCallback(() => {
-      loadBookings();
-    }, [])
-  );
-
-  const loadBookings = async () => {
+  // تحميل الحجوزات عند فتح الصفحة فقط
+  const loadBookings = useCallback(async (setLoadingState = true) => {
     if (!global.currentUser) {
-      setLoading(false);
+      if (setLoadingState) setLoading(false);
       return;
     }
-
     try {
       const response = await getUserBookings(global.currentUser._id);
       setBookings(response.data);
-    } catch (error: any) {
+    } catch (error) {
       Alert.alert(t('error'), 'فشل في تحميل الحجوزات');
     } finally {
-      setLoading(false);
+      if (setLoadingState) setLoading(false);
     }
-  };
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      let mounted = true;
+      const fetch = async () => {
+        if (mounted) await loadBookings();
+      };
+      fetch();
+      return () => { mounted = false; };
+    }, [loadBookings])
+  );
 
   // جدولة إشعار تذكير يومي بكل عمليات الغد فقط
   useEffect(() => {
@@ -148,7 +165,7 @@ const MyBookingsScreen = () => {
     }
   }, [bookings]);
 
-  // جدولة إشعار تحفيزي يومي أو كل يومين للطبيب الساعة 1 ظهراً إذا لم يكن لديه حجز غدًا
+  // جدولة إشعار تحفيزي مرة واحدة فقط لكل يوم/نوع مفصل
   useEffect(() => {
     if (bookings.length > 0 && jointTypes.length > 0) {
       const now = new Date();
@@ -157,14 +174,13 @@ const MyBookingsScreen = () => {
       const tomorrowBookings = bookings.filter(
         (b) => b.status === 'approved' && b.date === tomorrowStr
       );
-      // إذا لم يوجد حجز غدًا، أرسل إشعار تحفيزي الساعة 1 ظهراً
       if (tomorrowBookings.length === 0) {
-        // اختيار نوع مفصل مختلف كل يوم
         const dayIndex = Math.floor(now.getTime() / (1000 * 60 * 60 * 24));
         const jointTypeIndex = dayIndex % jointTypes.length;
         const jointTypeName = jointTypes[jointTypeIndex]?.name || 'مفصل';
-        const reminderDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 13, 0, 0, 0); // غدًا الساعة 1 ظهراً
-        if (reminderDate > now) {
+        const reminderDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 13, 0, 0, 0);
+        const reminderKey = `${reminderDate.toISOString()}-${jointTypeName}`;
+        if (reminderDate > now && scheduledMotivationRef.current !== reminderKey) {
           NotificationService.scheduleNotification(
             'تذكير من المركز الدولي',
             `عندك مفصل ${jointTypeName} ولسه محجزتش، المركز الدولي معاك دايمًا وبيفكرك بمواعيد عمليات المفاصل بتاعتك`,
@@ -174,23 +190,25 @@ const MyBookingsScreen = () => {
               type: 'motivational',
             }
           );
+          scheduledMotivationRef.current = reminderKey;
         }
       }
     }
   }, [bookings, jointTypes]);
 
-  // تجهيز بيانات التقويم
+  // تجهيز بيانات التقويم (Multi-Period marking)
   const markedDates = bookings.reduce((acc, booking) => {
-    acc[booking.date] = acc[booking.date] || { marked: false, dots: [] };
-    acc[booking.date].marked = true;
-    acc[booking.date].dots.push({
+    if (!acc[booking.date]) {
+      acc[booking.date] = { periods: [] };
+    }
+    acc[booking.date].periods.push({
       color: getStatusColor(booking.status),
-      key: booking._id,
+      startingDay: true,
+      endingDay: true,
     });
     return acc;
   }, {} as any);
 
-  // الحجوزات لليوم المختار
   const bookingsForSelectedDate = selectedDate
     ? bookings.filter((b) => b.date === selectedDate)
     : [];
@@ -277,9 +295,9 @@ const MyBookingsScreen = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadBookings();
+    await loadBookings(false);
     setRefreshing(false);
-  }, []);
+  }, [loadBookings]);
 
   if (loading) {
     return (
@@ -294,21 +312,15 @@ const MyBookingsScreen = () => {
 
   return (
     <LinearGradient colors={[COLORS.primary, COLORS.secondary]} style={styles.gradient}>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1, padding: SIZES.padding, paddingTop: 60 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
-        }
-      >
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, padding: SIZES.padding, paddingTop: 60 }}>
         <Text style={styles.title}>{t('my_bookings')}</Text>
         <Calendar
-          onDayPress={(day: any) => setSelectedDate(day.dateString)}
+          onDayPress={day => setSelectedDate(day.dateString)}
           markedDates={{
             ...markedDates,
             ...(selectedDate ? { [selectedDate]: { ...(markedDates[selectedDate] || {}), selected: true, selectedColor: COLORS.primary } } : {}),
           }}
-          markingType="multi-dot"
+          markingType="multi-period"
           minDate={new Date().toISOString().split('T')[0]}
           style={styles.calendar}
           theme={{
@@ -358,7 +370,6 @@ const MyBookingsScreen = () => {
                 <Text style={styles.dateLabel}>
                   {t('booking_date')}: {new Date(item.createdAt).toLocaleDateString('ar-EG')}
                 </Text>
-                {/* Cancel Booking Button - Only show for cancellable bookings */}
                 {isBookingCancellable(item) && (
                   <TouchableOpacity
                     style={[styles.cancelButton, cancelling === item._id && styles.cancelButtonDisabled]}
