@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, SafeAreaView, ActivityIndicator, FlatList, RefreshControl } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SIZES, SHADOW } from '../../constants/theme';
+import { COLORS } from '../../constants/Colors';
+import { SIZES, SHADOW, FONTS } from '../../constants/theme';
 import { getJointTypeSlotsWithStatus } from '../../services/api';
+import { getUser } from '../../services/auth';
 import { t } from '../../i18n';
+import { Card, Surface, Chip, Button, Divider } from 'react-native-paper';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -17,6 +20,7 @@ type RootStackParamList = {
   SelectTimeSlot: { jointType: string; jointTypeId: string; date: string } | undefined;
   Confirmation: { jointType: string; jointTypeId: string; date: string; timeSlot: string; timeSlotId: string } | undefined;
   MyBookings: undefined;
+  Notifications: undefined;
 };
 
 type RouteParams = {
@@ -31,7 +35,7 @@ type TimeSlot = {
   end_time: string;
   available: number;
   capacity: number;
-  status: string; // Added status field
+  status: string;
 };
 
 const SelectTimeSlotScreen = () => {
@@ -40,28 +44,43 @@ const SelectTimeSlotScreen = () => {
   const { jointType, jointTypeId, date } = (route.params as RouteParams) || { jointType: '', jointTypeId: '', date: '' };
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    loadAvailableSlots();
+    const fetchUser = async () => {
+      console.log('🔍 Fetching user for SelectTimeSlot...');
+      const u = await getUser();
+      console.log('👤 User for SelectTimeSlot:', u);
+      setUser(u);
+    };
+    fetchUser();
   }, []);
+
+  useEffect(() => {
+    if (user?.data?._id) {
+      console.log('✅ User authenticated, loading time slots');
+      loadAvailableSlots();
+    }
+  }, [user]);
 
   const loadAvailableSlots = async () => {
     try {
-      if (!global.currentUser?._id) {
+      if (!user?.data?._id) {
+        console.log('❌ No user ID found in loadAvailableSlots');
         Alert.alert('خطأ', 'يرجى تسجيل الدخول أولاً');
         navigation.navigate('Login');
         return;
       }
-      const response = await getJointTypeSlotsWithStatus(jointTypeId, global.currentUser.governorate, date);
+      console.log('🔍 Loading time slots for user:', user.data._id);
+      const response = await getJointTypeSlotsWithStatus(jointTypeId, user.data.governorate, date);
       const now = new Date();
       setTimeSlots(response.data.map((slot: any) => {
-        // بناء تاريخ/وقت البداية والنهاية للفترة
-        const slotDate = date; // المتغير date هو تاريخ اليوم المختار
+        const slotDate = date;
         const slotStart = new Date(`${slotDate}T${slot.start_time}:00`);
         const slotEnd = new Date(`${slotDate}T${slot.end_time}:00`);
 
-        // لو التاريخ هو اليوم الحالي، والوقت الحالي بعد نهاية الفترة، اجعلها مغلقة
         let status = slot.status;
         if (slotDate === now.toISOString().split('T')[0] && now > slotEnd) {
           status = 'closed';
@@ -73,7 +92,7 @@ const SelectTimeSlotScreen = () => {
           end_time: slot.end_time,
           available: status === 'open' ? slot.remaining : 0,
           capacity: slot.capacity,
-          status
+          status: status,
         };
       }));
       console.log('DEBUG: timeSlots', response.data);
@@ -85,12 +104,6 @@ const SelectTimeSlotScreen = () => {
     }
   };
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadAvailableSlots();
-    setRefreshing(false);
-  }, []);
-
   const handleSelect = (timeSlot: TimeSlot) => {
     navigation.navigate('Confirmation', { 
       jointType, 
@@ -101,117 +114,321 @@ const SelectTimeSlotScreen = () => {
     });
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'open': return COLORS.success;
+      case 'closed': return COLORS.error;
+      case 'full': return COLORS.warning;
+      default: return COLORS.textTertiary;
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'open': return t('available');
+      case 'closed': return t('closed');
+      case 'full': return t('full');
+      default: return t('unknown');
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'open': return 'check-circle';
+      case 'closed': return 'close-circle';
+      case 'full': return 'alert-circle';
+      default: return 'help-circle';
+    }
+  };
+
+  const formatTime = (time: string) => {
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'م' : 'ص';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  const renderTimeSlot = ({ item }: { item: TimeSlot }) => (
+    <Card style={styles.timeSlotCard} elevation={2}>
+      <TouchableOpacity 
+        onPress={() => handleSelect(item)}
+        disabled={item.status !== 'open'}
+        style={[
+          styles.timeSlotItem,
+          item.status !== 'open' && styles.timeSlotDisabled
+        ]}
+      >
+        <View style={styles.timeSlotHeader}>
+          <View style={styles.timeInfo}>
+            <MaterialCommunityIcons 
+              name="clock-outline" 
+              size={24} 
+              color={COLORS.primary} 
+            />
+            <Text style={styles.timeText}>
+              {formatTime(item.start_time)} - {formatTime(item.end_time)}
+            </Text>
+          </View>
+          <Chip 
+            icon={getStatusIcon(item.status) as any}
+            style={[styles.statusChip, { backgroundColor: getStatusColor(item.status) }]}
+            textStyle={styles.statusChipText}
+          >
+            {getStatusText(item.status)}
+          </Chip>
+        </View>
+        
+        <Divider style={styles.divider} />
+        
+        <View style={styles.timeSlotDetails}>
+          <View style={styles.capacityInfo}>
+            <MaterialCommunityIcons 
+              name="account-group" 
+              size={20} 
+              color={COLORS.textSecondary} 
+            />
+            <Text style={styles.capacityText}>
+              {t('capacity')}: {item.available}/{item.capacity}
+            </Text>
+          </View>
+          
+          {item.status === 'open' && (
+            <Button
+              mode="contained"
+              onPress={() => handleSelect(item)}
+              style={styles.selectButton}
+              contentStyle={styles.buttonContent}
+              labelStyle={styles.buttonLabel}
+            >
+              {t('select')}
+            </Button>
+          )}
+        </View>
+      </TouchableOpacity>
+    </Card>
+  );
+
   if (loading) {
     return (
-      <LinearGradient colors={[COLORS.primary, COLORS.secondary]} style={styles.gradient}>
-        <View style={styles.container}>
-          <ActivityIndicator size="large" color={COLORS.card} />
+      <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.loadingContainer}>
+        <Surface style={styles.loadingCard} elevation={4}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={styles.loadingText}>{t('loading')}</Text>
-        </View>
+        </Surface>
       </LinearGradient>
     );
   }
 
   return (
-    <LinearGradient colors={[COLORS.primary, COLORS.secondary]} style={styles.gradient}>
-      <View style={styles.container}>
-        <Text style={styles.title}>{t('select_time_slot')}</Text>
-        <Text style={styles.subtitle}>{jointType} - {date}</Text>
-        <Text style={styles.subtitle}>{t('governorate')}: {global.currentUser?.governorate}</Text>
-        
-        <FlatList
-          data={timeSlots}
-          keyExtractor={item => item.id?.toString() || Math.random().toString()}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[styles.card, (item.available === 0 || item.status === 'closed') && styles.full]}
-              onPress={() => item.available > 0 && handleSelect(item)}
-              disabled={item.available === 0 || item.status === 'closed'}
-              activeOpacity={0.85}
-            >
-              <MaterialCommunityIcons name="clock-outline" size={SIZES.icon + 4} color={(item.available === 0 || item.status === 'closed') ? COLORS.muted : COLORS.primary} style={{ marginBottom: 8 }} />
-              <Text style={[styles.cardText, (item.available === 0 || item.status === 'closed') && { color: COLORS.muted }]}> 
-                {item.start_time} - {item.end_time}
-              </Text>
-              <Text style={[styles.availabilityText, (item.available === 0 || item.status === 'closed') && { color: COLORS.muted }]}> 
-                {item.status === 'closed' ? t('closed') : (item.available === 0 ? t('full') : `${item.available} ${t('remaining_places')} ${t('from')} ${item.capacity}`)}
-              </Text>
-            </TouchableOpacity>
-          )}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
+    <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.container}>
+      <View style={styles.header}>
+        <Surface style={styles.headerCard} elevation={4}>
+          <View style={styles.headerContent}>
+            <View style={styles.bookingInfo}>
               <MaterialCommunityIcons 
-                name="clock-alert" 
-                size={64} 
-                color={COLORS.muted} 
+                name="bone" 
+                size={32} 
+                color={COLORS.primary} 
               />
-              <Text style={styles.emptyText}>{t('no_available_slots')}</Text>
+              <View style={styles.bookingText}>
+                <Text style={styles.jointTypeName}>{jointType}</Text>
+                <Text style={styles.dateText}>{date}</Text>
+                <Chip 
+                  icon="clock" 
+                  style={styles.timeChip}
+                  textStyle={styles.timeChipText}
+                >
+                  {t('select_time_slot')}
+                </Chip>
+              </View>
             </View>
-          }
-          contentContainerStyle={{ paddingBottom: 24 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />
-          }
-        />
+          </View>
+        </Surface>
       </View>
+
+      <FlatList
+        data={timeSlots}
+        renderItem={renderTimeSlot}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={loadAvailableSlots}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
+        ListEmptyComponent={
+          <Surface style={styles.emptyCard} elevation={2}>
+                         <MaterialCommunityIcons 
+               name="clock-alert" 
+               size={48} 
+               color={COLORS.textSecondary} 
+             />
+            <Text style={styles.emptyTitle}>{t('no_time_slots_available')}</Text>
+            <Text style={styles.emptySubtitle}>{t('try_different_date')}</Text>
+          </Surface>
+        }
+      />
     </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
-  gradient: { flex: 1 },
-  container: { flex: 1, padding: SIZES.padding, paddingTop: 60 },
-  title: { 
-    fontSize: SIZES.title, 
-    fontWeight: 'bold', 
-    color: COLORS.card, 
-    marginBottom: 16, 
-    alignSelf: 'center', 
-    textShadowColor: COLORS.shadow, 
-    textShadowOffset: { width: 0, height: 2 }, 
-    textShadowRadius: 8 
+  container: {
+    flex: 1,
   },
-  subtitle: { 
-    fontSize: SIZES.text, 
-    color: COLORS.card, 
-    marginBottom: 8, 
-    alignSelf: 'center',
-    textShadowColor: COLORS.shadow, 
-    textShadowOffset: { width: 0, height: 1 }, 
-    textShadowRadius: 4 
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SIZES.spacing.lg,
   },
-  card: {
+  loadingCard: {
     backgroundColor: COLORS.card,
-    borderRadius: SIZES.radius,
-    padding: 32,
-    marginBottom: 18,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.spacing.xl,
     alignItems: 'center',
-    ...SHADOW,
+    ...SHADOW.light.large,
   },
-  full: {
-    backgroundColor: '#eee',
+  loadingText: {
+    marginTop: SIZES.spacing.md,
+    fontSize: SIZES.md,
+    color: COLORS.textSecondary,
   },
-  cardText: { 
-    fontSize: SIZES.subtitle, 
-    fontWeight: 'bold', 
-    color: COLORS.primary,
-    marginBottom: 4
+  header: {
+    paddingHorizontal: SIZES.spacing.lg,
+    paddingTop: SIZES.spacing.xl,
+    paddingBottom: SIZES.spacing.lg,
   },
-  availabilityText: { 
-    fontSize: SIZES.text, 
-    color: COLORS.muted,
-    textAlign: 'center'
+  headerCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius.lg,
+    ...SHADOW.light.large,
   },
-  loadingText: { color: COLORS.card, fontSize: SIZES.text, marginTop: 16 },
-  emptyContainer: {
+  headerContent: {
+    padding: SIZES.spacing.lg,
+  },
+  bookingInfo: {
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 40,
   },
-  emptyText: { 
-    color: COLORS.card, 
-    fontSize: SIZES.text, 
-    marginTop: 16,
-    textAlign: 'center'
+  bookingText: {
+    marginLeft: SIZES.spacing.md,
+    flex: 1,
+  },
+  jointTypeName: {
+    fontSize: SIZES.xl,
+    fontWeight: '700' as const,
+    color: COLORS.text,
+    marginBottom: SIZES.spacing.xs,
+  },
+  dateText: {
+    fontSize: SIZES.md,
+    color: COLORS.textSecondary,
+    marginBottom: SIZES.spacing.sm,
+  },
+  timeChip: {
+    backgroundColor: COLORS.backgroundSecondary,
+    alignSelf: 'flex-start',
+  },
+  timeChipText: {
+    color: COLORS.textSecondary,
+    fontSize: SIZES.sm,
+  },
+  listContainer: {
+    paddingHorizontal: SIZES.spacing.lg,
+    paddingBottom: SIZES.spacing.xl,
+  },
+  timeSlotCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius.md,
+    marginBottom: SIZES.spacing.md,
+    ...SHADOW.light.medium,
+  },
+  timeSlotItem: {
+    padding: SIZES.spacing.lg,
+  },
+  timeSlotDisabled: {
+    opacity: 0.6,
+  },
+  timeSlotHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SIZES.spacing.md,
+  },
+  timeInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  timeText: {
+    fontSize: SIZES.lg,
+    fontWeight: '600' as const,
+    color: COLORS.text,
+    marginLeft: SIZES.spacing.sm,
+  },
+  statusChip: {
+    alignSelf: 'flex-start',
+  },
+  statusChipText: {
+    color: COLORS.textInverse,
+    fontSize: SIZES.sm,
+    fontWeight: '500' as const,
+  },
+  divider: {
+    backgroundColor: COLORS.divider,
+    marginVertical: SIZES.spacing.md,
+  },
+  timeSlotDetails: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  capacityInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  capacityText: {
+    fontSize: SIZES.sm,
+    color: COLORS.textSecondary,
+    marginLeft: SIZES.spacing.xs,
+  },
+  selectButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.radius.sm,
+    ...SHADOW.light.small,
+  },
+  buttonContent: {
+    height: SIZES.button.sm,
+  },
+  buttonLabel: {
+    fontSize: SIZES.sm,
+    fontWeight: '600' as const,
+  },
+  emptyCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.spacing.xl,
+    alignItems: 'center',
+    marginTop: SIZES.spacing.xl,
+    ...SHADOW.light.medium,
+  },
+  emptyTitle: {
+    fontSize: SIZES.lg,
+    fontWeight: '600' as const,
+    color: COLORS.text,
+    marginTop: SIZES.spacing.md,
+    marginBottom: SIZES.spacing.sm,
+  },
+  emptySubtitle: {
+    fontSize: SIZES.md,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
   },
 });
 

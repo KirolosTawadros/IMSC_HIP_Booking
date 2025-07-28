@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Alert, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, SafeAreaView, ActivityIndicator, RefreshControl } from 'react-native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Calendar } from 'react-native-calendars';
-import { COLORS, SIZES, SHADOW } from '../../constants/theme';
+import { COLORS } from '../../constants/Colors';
+import { SIZES, SHADOW, FONTS } from '../../constants/theme';
 import { getUserBookings, cancelBooking, getJointTypes } from '../../services/api';
+import { getUser } from '../../services/auth';
 import { t } from '../../i18n';
 import NotificationService from '../../services/notifications';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Card, Surface, Chip, Button, Divider, FAB } from 'react-native-paper';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -39,21 +41,13 @@ type Booking = {
   createdAt: string;
 };
 
-// نوع جديد لعنصر الأجندة
-interface AgendaEntry {
-  name: string;
-  height: number;
-  day: string;
-  booking: Booking;
-}
-
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'pending': return '#ff9800';
-    case 'approved': return '#4caf50';
-    case 'rejected': return '#f44336';
-    case 'cancelled': return '#9e9e9e';
-    default: return '#9e9e9e';
+    case 'pending': return COLORS.bookingPending;
+    case 'approved': return COLORS.bookingApproved;
+    case 'rejected': return COLORS.bookingRejected;
+    case 'cancelled': return COLORS.bookingCancelled;
+    default: return COLORS.textTertiary;
   }
 };
 
@@ -81,15 +75,23 @@ const MyBookingsScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [cancelling, setCancelling] = useState<string | null>(null);
-  // اجعل selectedDate يبدأ اليوم الحالي فقط ولا تضبطه في useEffect
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [jointTypes, setJointTypes] = useState<any[]>([]);
   const scheduledMotivationRef = useRef<string | null>(null);
-  const didSetSelectedDateRef = useRef(false);
 
-  // جلب أنواع المفاصل عند أول تحميل فقط
+  useEffect(() => {
+    const fetchUser = async () => {
+      console.log('🔍 Fetching user for MyBookings...');
+      const u = await getUser();
+      console.log('👤 User for MyBookings:', u);
+      setUser(u);
+    };
+    fetchUser();
+  }, []);
+
   useEffect(() => {
     let mounted = true;
     const fetchJointTypes = async () => {
@@ -104,21 +106,25 @@ const MyBookingsScreen = () => {
     return () => { mounted = false; };
   }, []);
 
-  // تحميل الحجوزات عند فتح الصفحة فقط
   const loadBookings = useCallback(async (setLoadingState = true) => {
-    if (!global.currentUser) {
+    console.log('📋 Loading bookings for user:', user);
+    if (!user?.data?._id) {
+      console.log('❌ No user ID found');
       if (setLoadingState) setLoading(false);
       return;
     }
     try {
-      const response = await getUserBookings(global.currentUser._id);
+      console.log('🔍 Fetching bookings from API...');
+      const response = await getUserBookings(user.data._id);
+      console.log('✅ Bookings loaded successfully:', response.data);
       setBookings(response.data);
     } catch (error) {
-      Alert.alert(t('error'), 'فشل في تحميل الحجوزات');
+      console.log('❌ Error loading bookings:', error);
+      Alert.alert('خطأ', 'فشل في تحميل الحجوزات');
     } finally {
       if (setLoadingState) setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -131,23 +137,18 @@ const MyBookingsScreen = () => {
     }, [loadBookings])
   );
 
-  // جدولة إشعار تذكير يومي بكل عمليات الغد فقط
   useEffect(() => {
     if (bookings.length > 0) {
-      // حساب تاريخ الغد
       const now = new Date();
       const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
       const tomorrowStr = tomorrow.toISOString().split('T')[0];
-      // جلب كل العمليات الموافق عليها ليوم الغد
       const tomorrowBookings = bookings.filter(
         (b) => b.status === 'approved' && b.date === tomorrowStr
       );
       if (tomorrowBookings.length > 0) {
-        // بناء نص الإشعار
         const body = tomorrowBookings.map((b, i) =>
           `${i + 1}- ${b.joint_type_id.name} في مستشفى ${b.joint_type_id.name} الساعة ${b.time_slot_id.start_time}`
         ).join('\n');
-        // جدولة الإشعار للغد الساعة 9 صباحًا
         const reminderDate = new Date(tomorrow);
         reminderDate.setHours(9, 0, 0, 0);
         if (reminderDate > now) {
@@ -165,7 +166,6 @@ const MyBookingsScreen = () => {
     }
   }, [bookings]);
 
-  // جدولة إشعار تحفيزي مرة واحدة فقط لكل يوم/نوع مفصل
   useEffect(() => {
     if (bookings.length > 0 && jointTypes.length > 0) {
       const now = new Date();
@@ -196,25 +196,58 @@ const MyBookingsScreen = () => {
     }
   }, [bookings, jointTypes]);
 
-  // تجهيز بيانات التقويم (Multi-Period marking)
   const markedDates = bookings.reduce((acc, booking) => {
     if (!acc[booking.date]) {
-      acc[booking.date] = { periods: [] };
+      acc[booking.date] = { 
+        periods: [],
+        dots: [],
+        textColor: COLORS.text
+      };
     }
+    
+    // Add period marking for multi-period support
     acc[booking.date].periods.push({
       color: getStatusColor(booking.status),
       startingDay: true,
       endingDay: true,
+      textColor: COLORS.textInverse,
     });
+    
+    // Add dot marking for additional visual indication
+    acc[booking.date].dots.push({
+      color: getStatusColor(booking.status),
+      key: booking._id,
+      selectedDotColor: COLORS.textInverse,
+    });
+    
+    // If multiple bookings on same date, adjust text color for better visibility
+    if (acc[booking.date].periods.length > 1) {
+      acc[booking.date].textColor = COLORS.textInverse;
+    }
+    
     return acc;
   }, {} as any);
+
+  // Add selected date marking
+  if (selectedDate && markedDates[selectedDate]) {
+    markedDates[selectedDate].selected = true;
+    markedDates[selectedDate].selectedColor = COLORS.primary;
+    markedDates[selectedDate].selectedTextColor = COLORS.textInverse;
+  } else if (selectedDate) {
+    markedDates[selectedDate] = {
+      selected: true,
+      selectedColor: COLORS.primary,
+      selectedTextColor: COLORS.textInverse,
+      periods: [],
+      dots: []
+    };
+  }
 
   const bookingsForSelectedDate = selectedDate
     ? bookings.filter((b) => b.date === selectedDate)
     : [];
 
   const isBookingCancellable = (booking: Booking) => {
-    // Only pending and approved bookings can be cancelled
     if (booking.status !== 'pending' && booking.status !== 'approved') {
       return false;
     }
@@ -223,12 +256,10 @@ const MyBookingsScreen = () => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    // If booking is in the past, not cancellable
     if (bookingDate < today) {
       return false;
     }
     
-    // If booking is today, check if time has passed
     if (bookingDate.getTime() === today.getTime()) {
       const currentTime = now.getHours() * 60 + now.getMinutes();
       const [hours, minutes] = booking.time_slot_id.start_time.split(':');
@@ -254,9 +285,10 @@ const MyBookingsScreen = () => {
           onPress: async () => {
             setCancelling(booking._id);
             try {
+              console.log('🔍 Cancelling booking:', booking._id);
               await cancelBooking(booking._id);
+              console.log('✅ Booking cancelled successfully');
               
-              // إرسال إشعار محلي عند نجاح إلغاء الحجز
               await NotificationService.sendLocalNotification(
                 'تم إلغاء الحجز بنجاح',
                 `تم إلغاء حجز ${booking.joint_type_id.name} في ${booking.date} الساعة ${booking.time_slot_id.start_time}`,
@@ -269,8 +301,10 @@ const MyBookingsScreen = () => {
               );
               
               Alert.alert(t('cancel_booking_success'));
-              loadBookings(); // Reload bookings
+              console.log('🔄 Reloading bookings after cancellation');
+              loadBookings();
             } catch (error: any) {
+              console.log('❌ Error cancelling booking:', error);
               let errorMessage = t('cancel_booking_error');
               if (error.response?.data?.message) {
                 if (error.response.data.message.includes('past')) {
@@ -293,237 +327,427 @@ const MyBookingsScreen = () => {
     );
   };
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadBookings(false);
-    setRefreshing(false);
-  }, [loadBookings]);
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('ar-EG', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  const formatTime = (time: string) => {
+    const [hours, minutes] = time.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'م' : 'ص';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes} ${ampm}`;
+  };
+
+  const renderBooking = (booking: Booking) => (
+    <Card key={booking._id} style={styles.bookingCard} elevation={3}>
+      <Card.Content style={styles.bookingContent}>
+        <View style={styles.bookingHeader}>
+          <View style={styles.bookingInfo}>
+            <MaterialCommunityIcons 
+              name="bone" 
+              size={24} 
+              color={COLORS.primary} 
+            />
+            <View style={styles.bookingText}>
+              <Text style={styles.bookingTitle}>{booking.joint_type_id.name}</Text>
+              <Text style={styles.bookingDate}>{formatDate(booking.date)}</Text>
+              <Text style={styles.bookingTime}>{formatTime(booking.time_slot_id.start_time)}</Text>
+            </View>
+          </View>
+          <Chip 
+            icon={getStatusIcon(booking.status) as any}
+            style={[styles.statusChip, { backgroundColor: getStatusColor(booking.status) }]}
+            textStyle={styles.statusChipText}
+          >
+            {getStatusText(booking.status)}
+          </Chip>
+        </View>
+
+        {isBookingCancellable(booking) && (
+          <>
+            <Divider style={styles.divider} />
+            <View style={styles.bookingActions}>
+              <Button
+                mode="outlined"
+                onPress={() => handleCancelBooking(booking)}
+                loading={cancelling === booking._id}
+                disabled={cancelling === booking._id}
+                style={styles.cancelButton}
+                contentStyle={styles.buttonContent}
+                labelStyle={[styles.buttonLabel, { color: COLORS.error }]}
+              >
+                {t('cancel_booking')}
+              </Button>
+            </View>
+          </>
+        )}
+      </Card.Content>
+    </Card>
+  );
 
   if (loading) {
     return (
-      <LinearGradient colors={[COLORS.primary, COLORS.secondary]} style={styles.gradient}>
-        <View style={styles.container}>
-          <ActivityIndicator size="large" color={COLORS.card} />
+      <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.loadingContainer}>
+        <Surface style={styles.loadingCard} elevation={4}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={styles.loadingText}>{t('loading')}</Text>
-        </View>
+        </Surface>
       </LinearGradient>
     );
   }
 
   return (
-    <LinearGradient colors={[COLORS.primary, COLORS.secondary]} style={styles.gradient}>
-      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1, padding: SIZES.padding, paddingTop: 60 }}>
-        <Text style={styles.title}>{t('my_bookings')}</Text>
-        <Calendar
-          onDayPress={day => setSelectedDate(day.dateString)}
-          markedDates={{
-            ...markedDates,
-            ...(selectedDate ? { [selectedDate]: { ...(markedDates[selectedDate] || {}), selected: true, selectedColor: COLORS.primary } } : {}),
-          }}
-          markingType="multi-period"
-          minDate={new Date().toISOString().split('T')[0]}
-          style={styles.calendar}
-          theme={{
-            backgroundColor: COLORS.card,
-            calendarBackground: COLORS.card,
-            textSectionTitleColor: COLORS.primary,
-            selectedDayBackgroundColor: COLORS.primary,
-            todayTextColor: COLORS.primary,
-            dayTextColor: COLORS.text,
-            textDisabledColor: COLORS.muted,
-            dotColor: COLORS.primary,
-            selectedDotColor: COLORS.white,
-            arrowColor: COLORS.primary,
-            monthTextColor: COLORS.primary,
-            indicatorColor: COLORS.primary,
-          }}
-        />
-        {selectedDate ? (
-          bookingsForSelectedDate.length > 0 ? (
-            bookingsForSelectedDate.map((item) => (
-              <View key={item._id} style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <MaterialCommunityIcons 
-                    name="calendar-check" 
-                    size={SIZES.icon + 4} 
-                    color={COLORS.primary} 
-                    style={{ marginBottom: 8 }} 
-                  />
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}> 
-                    <MaterialCommunityIcons 
-                      name={getStatusIcon(item.status)} 
-                      size={16} 
-                      color={COLORS.white} 
-                    />
-                    <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+    <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={styles.container}>
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                loadBookings(false).finally(() => setRefreshing(false));
+              }}
+              colors={[COLORS.primary]}
+              tintColor={COLORS.primary}
+            />
+          }
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>{t('my_bookings')}</Text>
+            <Text style={styles.subtitle}>{t('manage_your_bookings')}</Text>
+          </View>
+
+          {/* Calendar Card */}
+          <Card style={styles.calendarCard} elevation={4}>
+            <Card.Content style={styles.calendarContent}>
+              {/* Quick Stats */}
+              <View style={styles.quickStats}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{bookings.filter(b => b.status === 'pending').length}</Text>
+                  <Text style={styles.statLabel}>{t('pending')}</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{bookings.filter(b => b.status === 'approved').length}</Text>
+                  <Text style={styles.statLabel}>{t('approved')}</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNumber}>{bookings.filter(b => b.status === 'cancelled').length}</Text>
+                  <Text style={styles.statLabel}>{t('cancelled')}</Text>
+                </View>
+              </View>
+
+              <Calendar
+                onDayPress={(day) => setSelectedDate(day.dateString)}
+                markedDates={markedDates}
+                markingType="multi-period"
+                theme={{
+                  backgroundColor: COLORS.card,
+                  calendarBackground: COLORS.card,
+                  textSectionTitleColor: COLORS.text,
+                  selectedDayBackgroundColor: COLORS.primary,
+                  selectedDayTextColor: COLORS.textInverse,
+                  todayTextColor: COLORS.primary,
+                  dayTextColor: COLORS.text,
+                  textDisabledColor: COLORS.textTertiary,
+                  dotColor: COLORS.primary,
+                  selectedDotColor: COLORS.textInverse,
+                  arrowColor: COLORS.primary,
+                  monthTextColor: COLORS.text,
+                  indicatorColor: COLORS.primary,
+                  textDayFontFamily: FONTS.family.regular,
+                  textMonthFontFamily: FONTS.family.medium,
+                  textDayHeaderFontFamily: FONTS.family.medium,
+                  textDayFontWeight: '400' as const,
+                  textMonthFontWeight: '600' as const,
+                  textDayHeaderFontWeight: '500' as const,
+                  textDayFontSize: SIZES.md,
+                  textMonthFontSize: SIZES.lg,
+                  textDayHeaderFontSize: SIZES.sm,
+                }}
+                style={styles.calendar}
+              />
+              
+              {/* Status Legend */}
+              <View style={styles.legendContainer}>
+                <Text style={styles.legendTitle}>{t('booking_status')}</Text>
+                <View style={styles.legendItems}>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendColor, { backgroundColor: getStatusColor('pending') }]} />
+                    <Text style={styles.legendText}>{t('pending')}</Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendColor, { backgroundColor: getStatusColor('approved') }]} />
+                    <Text style={styles.legendText}>{t('approved')}</Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendColor, { backgroundColor: getStatusColor('rejected') }]} />
+                    <Text style={styles.legendText}>{t('rejected')}</Text>
+                  </View>
+                  <View style={styles.legendItem}>
+                    <View style={[styles.legendColor, { backgroundColor: getStatusColor('cancelled') }]} />
+                    <Text style={styles.legendText}>{t('cancelled')}</Text>
                   </View>
                 </View>
-                <Text style={styles.label}>{t('joint_type')}: <Text style={styles.value}>{item.joint_type_id.name}</Text></Text>
-                <Text style={styles.label}>{t('date')}: <Text style={styles.value}>{item.date}</Text></Text>
-                <Text style={styles.label}>{t('time_slot')}: <Text style={styles.value}>{item.time_slot_id.start_time}</Text></Text>
-                {item.notes && (
-                  <View style={styles.notesContainer}>
-                    <Text style={styles.notesLabel}>{t('notes')}:</Text>
-                    <Text style={styles.notesText}>{item.notes}</Text>
-                  </View>
-                )}
-                <Text style={styles.dateLabel}>
-                  {t('booking_date')}: {new Date(item.createdAt).toLocaleDateString('ar-EG')}
-                </Text>
-                {isBookingCancellable(item) && (
-                  <TouchableOpacity
-                    style={[styles.cancelButton, cancelling === item._id && styles.cancelButtonDisabled]}
-                    onPress={() => handleCancelBooking(item)}
-                    disabled={cancelling === item._id}
-                  >
-                    {cancelling === item._id ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <>
-                        <MaterialCommunityIcons name="close-circle" size={16} color="#fff" style={{ marginEnd: 4 }} />
-                        <Text style={styles.cancelButtonText}>{t('cancel_booking')}</Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                )}
               </View>
-            ))
-          ) : (
-            <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons 
-                name="calendar-remove" 
-                size={64} 
-                color={COLORS.muted} 
-              />
-              <Text style={styles.emptyText}>{t('no_bookings_yet')}</Text>
-              <TouchableOpacity
-                style={styles.bookNowButton}
-                onPress={() => navigation.navigate('SelectJointType')}
-                activeOpacity={0.85}
-              >
-                <MaterialCommunityIcons name="plus-circle" size={24} color="#fff" style={{ marginEnd: 8 }} />
-                <Text style={styles.bookNowButtonText}>احجز الآن</Text>
-              </TouchableOpacity>
-            </View>
-          )
-        ) : (
-          <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons 
-              name="calendar-search" 
-              size={64} 
-              color={COLORS.muted} 
-            />
-            <Text style={styles.emptyText}>اختر يومًا من التقويم لعرض الحجوزات</Text>
+            </Card.Content>
+          </Card>
+
+          {/* Bookings Section */}
+          <View style={styles.bookingsSection}>
+            {bookingsForSelectedDate.length > 0 ? (
+              bookingsForSelectedDate.map(renderBooking)
+            ) : (
+              <Surface style={styles.emptyCard} elevation={2}>
+                <MaterialCommunityIcons 
+                  name="calendar-blank" 
+                  size={48} 
+                  color={COLORS.textSecondary} 
+                />
+                <Text style={styles.emptyTitle}>{t('no_bookings_for_date')}</Text>
+                <Text style={styles.emptySubtitle}>
+                  {selectedDate === new Date().toISOString().split('T')[0] 
+                    ? t('no_bookings_today') 
+                    : t('no_bookings_selected_date')}
+                </Text>
+              </Surface>
+            )}
           </View>
-        )}
-      </ScrollView>
+        </ScrollView>
+
+        {/* FAB */}
+        <FAB
+          icon="plus"
+          style={styles.fab}
+          onPress={() => navigation.navigate('SelectJointType')}
+          color={COLORS.textInverse}
+        />
+      </SafeAreaView>
     </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
-  gradient: { flex: 1 },
-  container: { flex: 1, padding: SIZES.padding, paddingTop: 60 },
-  title: { fontSize: SIZES.title, fontWeight: 'bold', color: COLORS.card, marginBottom: 32, alignSelf: 'center', textShadowColor: COLORS.shadow, textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 },
-  card: {
-    backgroundColor: COLORS.card,
-    borderRadius: SIZES.radius,
-    padding: 24,
-    marginBottom: 18,
-    ...SHADOW,
+  container: {
+    flex: 1,
   },
-  cardHeader: {
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SIZES.spacing.lg,
+  },
+  loadingCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.spacing.xl,
+    alignItems: 'center',
+    ...SHADOW.light.large,
+  },
+  loadingText: {
+    marginTop: SIZES.spacing.md,
+    fontSize: SIZES.md,
+    color: COLORS.textSecondary,
+  },
+  header: {
+    paddingHorizontal: SIZES.spacing.lg,
+    paddingTop: SIZES.spacing.xl,
+    paddingBottom: SIZES.spacing.lg,
+  },
+  title: {
+    fontSize: SIZES.largeTitle,
+    fontWeight: '700' as const,
+    color: COLORS.textInverse,
+    marginBottom: SIZES.spacing.sm,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: SIZES.md,
+    color: COLORS.textInverse,
+    opacity: 0.9,
+    textAlign: 'center',
+  },
+  calendarCard: {
+    marginHorizontal: SIZES.spacing.lg,
+    marginBottom: SIZES.spacing.lg,
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius.lg,
+    ...SHADOW.light.large,
+  },
+  calendarContent: {
+    padding: SIZES.spacing.md,
+  },
+  calendar: {
+    borderRadius: SIZES.radius.md,
+  },
+  bookingsContainer: {
+    flex: 1,
+  },
+  bookingsContent: {
+    paddingHorizontal: SIZES.spacing.lg,
+    paddingBottom: SIZES.spacing.xl,
+  },
+  bookingCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius.md,
+    marginBottom: SIZES.spacing.md,
+    ...SHADOW.light.medium,
+  },
+  bookingContent: {
+    padding: SIZES.spacing.lg,
+  },
+  bookingHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    alignItems: 'flex-start',
   },
-  statusBadge: {
+  bookingInfo: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 4,
+    flex: 1,
   },
-  statusText: {
-    color: COLORS.white,
-    fontSize: 12,
-    fontWeight: 'bold',
+  bookingText: {
+    marginLeft: SIZES.spacing.md,
+    flex: 1,
   },
-  label: { fontSize: SIZES.text, marginBottom: 4, color: COLORS.text },
-  value: { fontWeight: 'bold', color: COLORS.primary },
-  notesContainer: {
-    marginTop: 12,
-    padding: 12,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.primary,
-  },
-  notesLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
+  bookingTitle: {
+    fontSize: SIZES.lg,
+    fontWeight: '600' as const,
     color: COLORS.text,
-    marginBottom: 4,
+    marginBottom: SIZES.spacing.xs,
   },
-  notesText: {
-    fontSize: 14,
-    color: COLORS.text,
-    lineHeight: 20,
+  bookingDate: {
+    fontSize: SIZES.md,
+    color: COLORS.textSecondary,
+    marginBottom: SIZES.spacing.xs,
   },
-  dateLabel: {
-    fontSize: 12,
-    color: COLORS.muted,
-    marginTop: 12,
-    textAlign: 'center',
+  bookingTime: {
+    fontSize: SIZES.sm,
+    color: COLORS.textTertiary,
+  },
+  statusChip: {
+    alignSelf: 'flex-start',
+  },
+  statusChipText: {
+    color: COLORS.textInverse,
+    fontSize: SIZES.sm,
+    fontWeight: '500' as const,
+  },
+  divider: {
+    backgroundColor: COLORS.divider,
+    marginVertical: SIZES.spacing.md,
+  },
+  bookingActions: {
+    alignItems: 'flex-end',
   },
   cancelButton: {
-    backgroundColor: '#f44336',
-    flexDirection: 'row',
+    borderColor: COLORS.error,
+    borderRadius: SIZES.radius.sm,
+  },
+  buttonContent: {
+    height: SIZES.button.sm,
+  },
+  buttonLabel: {
+    fontSize: SIZES.sm,
+    fontWeight: '600' as const,
+  },
+  emptyCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.spacing.xl,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginTop: 16,
+    marginTop: SIZES.spacing.xl,
+    ...SHADOW.light.medium,
   },
-  cancelButtonDisabled: {
-    backgroundColor: '#ccc',
+  emptyTitle: {
+    fontSize: SIZES.lg,
+    fontWeight: '600' as const,
+    color: COLORS.text,
+    marginTop: SIZES.spacing.md,
+    marginBottom: SIZES.spacing.sm,
   },
-  cancelButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 64,
-  },
-  emptyText: { 
-    color: COLORS.card, 
-    fontSize: SIZES.text, 
-    marginTop: 16,
+  emptySubtitle: {
+    fontSize: SIZES.md,
+    color: COLORS.textSecondary,
     textAlign: 'center',
   },
-  loadingText: { color: COLORS.card, fontSize: SIZES.text, marginTop: 16 },
-  calendar: {
-    marginBottom: 24,
-  },
-  bookNowButton: {
+  fab: {
+    position: 'absolute',
+    margin: SIZES.spacing.lg,
+    right: 0,
+    bottom: 0,
     backgroundColor: COLORS.primary,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: SIZES.spacing.xl,
+  },
+  bookingsSection: {
+    flex: 1,
+    paddingHorizontal: SIZES.spacing.lg,
+  },
+  legendContainer: {
+    marginTop: SIZES.spacing.md,
+    paddingHorizontal: SIZES.spacing.md,
+  },
+  legendTitle: {
+    fontSize: SIZES.md,
+    fontWeight: '600' as const,
+    color: COLORS.text,
+    marginBottom: SIZES.spacing.sm,
+  },
+  legendItems: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    flexWrap: 'wrap',
+  },
+  legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    marginTop: 20,
+    marginVertical: SIZES.spacing.xs,
   },
-  bookNowButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+  legendColor: {
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
+    marginRight: SIZES.spacing.xs,
+  },
+  legendText: {
+    fontSize: SIZES.sm,
+    color: COLORS.textSecondary,
+  },
+  quickStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: SIZES.spacing.md,
+    paddingHorizontal: SIZES.spacing.md,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: SIZES.xl,
+    fontWeight: '700' as const,
+    color: COLORS.primary,
+    marginBottom: SIZES.spacing.xs,
+  },
+  statLabel: {
+    fontSize: SIZES.sm,
+    color: COLORS.textSecondary,
   },
 });
 

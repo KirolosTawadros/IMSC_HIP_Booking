@@ -5,8 +5,10 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import { COLORS, SIZES } from '../../constants/theme';
-import { registerUser, getHospitals } from '../../services/api';
+import { COLORS } from '../../constants/Colors';
+import { SIZES } from '../../constants/theme';
+import { registerUser, getHospitals, loginUser } from '../../services/api';
+import { saveUser } from '../../services/auth';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { t } from '../../i18n';
 
@@ -15,6 +17,7 @@ I18nManager.forceRTL(true);
 type RootStackParamList = {
   Login: undefined;
   Register: undefined;
+  Home: undefined;
 };
 
 declare global {
@@ -68,8 +71,11 @@ const RegisterScreen = () => {
     try {
       const response = await registerUser(name, phone, hospitalId, governorate);
       if (response.data.success) {
+        // Auto login after successful registration
+        const loginResponse = await loginUser(phone, hospitalId);
+        await saveUser(loginResponse.data);
         alert(response.data.message);
-        navigation.replace('Login');
+        navigation.replace('Home');
       } else {
         alert(response.data.message || 'حدث خطأ ما');
       }
@@ -85,7 +91,7 @@ const RegisterScreen = () => {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
           <View style={styles.logoContainer}>
-            <MaterialCommunityIcons name="hospital-building" size={56} color={COLORS.white} style={{ alignSelf: 'center' }} />
+            <MaterialCommunityIcons name="hospital-building" size={56} color={COLORS.textInverse} style={{ alignSelf: 'center' }} />
             <Text style={styles.brandTitle}>IMSC</Text>
             <Text style={styles.brandSubtitle}>المركز الدولي للخدمات الطبية</Text>
           </View>
@@ -149,7 +155,7 @@ const RegisterScreen = () => {
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
                 <>
-                  <MaterialCommunityIcons name="account-plus" size={SIZES.icon} color="#fff" style={{ marginLeft: 8 }} />
+                  <MaterialCommunityIcons name="account-plus" size={24} color="#fff" style={{ marginLeft: 8 }} />
                   <Text style={styles.buttonText}>{t('register')}</Text>
                 </>
               )}

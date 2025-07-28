@@ -4,8 +4,10 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SIZES } from '../../constants/theme';
+import { COLORS } from '../../constants/Colors';
+import { SIZES } from '../../constants/theme';
 import { t } from '../../i18n';
+import { getUser } from '../../services/auth';
 
 type RootStackParamList = {
   Splash: undefined;
@@ -28,10 +30,26 @@ const SplashScreen = () => {
       duration: 900,
       useNativeDriver: true,
     }).start();
-    const timer = setTimeout(() => {
-      navigation.replace('Login');
-    }, 2000);
-    return () => clearTimeout(timer);
+    
+    const checkUserAndNavigate = async () => {
+      try {
+        const user = await getUser();
+        setTimeout(() => {
+          if (user) {
+            navigation.replace('Home');
+          } else {
+            navigation.replace('Login');
+          }
+        }, 2000);
+      } catch (error) {
+        console.error('Error checking user:', error);
+        setTimeout(() => {
+          navigation.replace('Login');
+        }, 2000);
+      }
+    };
+    
+    checkUserAndNavigate();
   }, [navigation]);
 
   return (

@@ -1,24 +1,41 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, ScrollView, Keyboard, TouchableWithoutFeedback, Dimensions, SafeAreaView } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  KeyboardAvoidingView, 
+  Platform, 
+  Alert, 
+  ActivityIndicator, 
+  ScrollView, 
+  Keyboard, 
+  TouchableWithoutFeedback, 
+  Dimensions, 
+  SafeAreaView 
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { COLORS, SIZES, SHADOW } from '../../constants/theme';
+import { COLORS } from '../../constants/Colors';
+import { SIZES, SHADOW, FONTS } from '../../constants/theme';
 import { loginUser } from '../../services/api';
+import { saveUser } from '../../services/auth';
 import DropDownPicker from 'react-native-dropdown-picker';
 import { getHospitals } from '../../services/api';
 import { t } from '../../i18n';
 import i18n from '../../i18n';
+import { TextInput, Button, Card, Surface } from 'react-native-paper';
 
 type RootStackParamList = {
   Splash: undefined;
   Login: undefined;
   Home: undefined;
   SelectJointType: undefined;
-  SelectDate: undefined;
-  SelectTimeSlot: undefined;
-  Confirmation: undefined;
+  SelectDate: { jointType: string; jointTypeId: string } | undefined;
+  SelectTimeSlot: { jointType: string; jointTypeId: string; date: string } | undefined;
+  Confirmation: { jointType: string; jointTypeId: string; date: string; timeSlot: string; timeSlotId: string } | undefined;
   MyBookings: undefined;
   Register: undefined;
 };
@@ -45,266 +62,321 @@ const LoginScreen = () => {
   const [hospitalItems, setHospitalItems] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [loadingHospitals, setLoadingHospitals] = useState(true);
-  const [_, forceUpdate] = React.useReducer(x => x + 1, 0);
+  const [loadingHospitals, setLoadingHospitals] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
+  const [hospitalError, setHospitalError] = useState('');
 
   React.useEffect(() => {
-    fetchHospitals();
+    loadHospitals();
   }, []);
 
-  const fetchHospitals = async () => {
+  const loadHospitals = async () => {
+    setLoadingHospitals(true);
     try {
-      setLoadingHospitals(true);
       const response = await getHospitals();
+      const hospitalOptions = response.data.map((hospital: any) => ({
+        label: hospital.name,
+        value: hospital._id,
+      }));
       setHospitals(response.data);
-      setHospitalItems(response.data.map((h: any) => ({ label: h.name, value: h._id })));
+      setHospitalItems(hospitalOptions);
     } catch (error) {
-      Alert.alert('خطأ', 'فشل في تحميل قائمة المستشفيات');
+      console.error('Error loading hospitals:', error);
     } finally {
       setLoadingHospitals(false);
     }
   };
 
+  const validatePhone = (phoneNumber: string) => {
+    const phoneRegex = /^01[0-2,5]{1}[0-9]{8}$/;
+    return phoneRegex.test(phoneNumber);
+  };
+
+  const handlePhoneChange = (text: string) => {
+    setPhone(text);
+    if (phoneError) setPhoneError('');
+  };
+
+  const handleHospitalChange = (value: string) => {
+    setHospitalId(value);
+    if (hospitalError) setHospitalError('');
+  };
+
   const handleLogin = async () => {
-    if (!phone || !hospitalId) {
-      Alert.alert('خطأ', 'يرجى إدخال جميع البيانات المطلوبة');
-      return;
+    // Validation
+    let hasError = false;
+    
+    if (!phone.trim()) {
+      setPhoneError('يرجى إدخال رقم الهاتف');
+      hasError = true;
+    } else if (!validatePhone(phone.trim())) {
+      setPhoneError('يرجى إدخال رقم هاتف صحيح');
+      hasError = true;
     }
+    
+    if (!hospitalId) {
+      setHospitalError('يرجى اختيار المستشفى');
+      hasError = true;
+    }
+    
+    if (hasError) return;
+
     setLoading(true);
     try {
-      const response = await loginUser(phone, hospitalId);
-      if (response.data.success) {
-        global.currentUser = response.data.data;
-        Alert.alert('تم تسجيل الدخول بنجاح', response.data.message);
-        navigation.replace('Home');
-      } else {
-        Alert.alert('خطأ في تسجيل الدخول', response.data.message || 'بيانات غير صحيحة');
-      }
+      console.log('🔐 Attempting login...');
+      const response = await loginUser(phone.trim(), hospitalId);
+      console.log('✅ Login successful:', response.data);
+      await saveUser(response.data);
+      console.log('💾 User saved to storage');
+      navigation.replace('Home');
     } catch (error: any) {
-      Alert.alert('خطأ في تسجيل الدخول', error.response?.data?.message || 'حدث خطأ ما');
+      console.log('❌ Login failed:', error);
+      Alert.alert('خطأ', error.response?.data?.message || 'فشل في تسجيل الدخول');
     } finally {
       setLoading(false);
     }
   };
 
-  const inputStyle = {
-    height: 48,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: '#f7fafd',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    fontSize: width * 0.045, // حجم خط نسبي
-    width: '90%' as const,
-    alignSelf: 'center' as const,
-  };
-  const dropDownContainerStyle = {
-    ...inputStyle,
-    marginTop: 0,
-    width: '90%' as const,
+  const handleRegister = () => {
+    navigation.navigate('Register');
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.primary }}>
-      <LinearGradient colors={[COLORS.primary, COLORS.secondary]} style={styles.gradient}>
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-          <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: 32 }}>
+    <SafeAreaView style={styles.container}>
+      <LinearGradient 
+        colors={[COLORS.gradientStart, COLORS.gradientEnd]} 
+        style={styles.gradient}
+      >
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardView}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <ScrollView 
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Header */}
               <View style={styles.header}>
-                <View style={styles.logoContainer}>
+                <Surface style={styles.logoContainer} elevation={4}>
                   <MaterialCommunityIcons 
                     name="hospital-building" 
-                    size={width * 0.13} 
-                    color={COLORS.white} 
+                    size={SIZES.icon.xxl} 
+                    color={COLORS.primary} 
                   />
-                </View>
-                <Text style={[styles.brandTitle, { fontSize: width * 0.08 }]}>IMSC</Text>
-                <Text style={[styles.brandSubtitle, { fontSize: width * 0.045 }]}>المركز الدولي للخدمات الطبية</Text>
-                <Text style={[styles.brandDescription, { fontSize: width * 0.04 }]}>تسجيل دخول الأطباء</Text>
+                </Surface>
+                <Text style={styles.title}>HIP Booking</Text>
+                <Text style={styles.subtitle}>{t('welcome_message')}</Text>
               </View>
-              <View style={[styles.card, { width: '90%' }]}> 
-                <Text style={[styles.title, { fontSize: width * 0.06 }]}>{t('login')}</Text>
-                <TextInput
-                  style={inputStyle}
-                  placeholder={t('phone_placeholder')}
-                  keyboardType="phone-pad"
-                  value={phone}
-                  onChangeText={setPhone}
-                  placeholderTextColor={COLORS.muted}
-                  editable={!loading}
-                />
-                <Text style={[styles.label, { fontSize: width * 0.04 }]}>{t('hospital')}</Text>
-                <DropDownPicker
-                  open={open}
-                  value={hospitalId}
-                  items={hospitalItems}
-                  setOpen={setOpen}
-                  setValue={setHospitalId}
-                  setItems={setHospitalItems}
-                  placeholder={t('select_hospital')}
-                  loading={loadingHospitals}
-                  disabled={loadingHospitals || loading}
-                  containerStyle={{ width: '90%', marginBottom: 16, alignSelf: 'center' }}
-                  style={inputStyle}
-                  dropDownContainerStyle={dropDownContainerStyle}
-                  dropDownDirection="AUTO"
-                  listMode="SCROLLVIEW"
-                  zIndex={1000}
-                  zIndexInverse={1000}
-                  rtl={true}
-                />
-                <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 16 }}>
-                  <TouchableOpacity onPress={() => { i18n.locale = 'ar'; forceUpdate(); }} style={{ marginHorizontal: 8 }}>
-                    <Text style={{ color: i18n.locale === 'ar' ? '#1976d2' : '#888', fontWeight: 'bold', fontSize: width * 0.04 }}>{t('arabic')}</Text>
+
+              {/* Login Form */}
+              <Card style={styles.formCard} elevation={4}>
+                <Card.Content style={styles.formContent}>
+                  <Text style={styles.formTitle}>{t('login')}</Text>
+                  
+                  {/* Phone Input */}
+                  <View style={styles.inputContainer}>
+                    <TextInput
+                      mode="outlined"
+                      label={t('phone_number')}
+                      value={phone}
+                      onChangeText={handlePhoneChange}
+                      keyboardType="phone-pad"
+                      style={styles.input}
+                      outlineColor={phoneError ? COLORS.error : COLORS.inputBorder}
+                      activeOutlineColor={COLORS.primary}
+                      left={<TextInput.Icon icon="phone" />}
+                      error={!!phoneError}
+                    />
+                    {phoneError ? (
+                      <Text style={styles.errorText}>{phoneError}</Text>
+                    ) : null}
+                  </View>
+
+                  {/* Hospital Dropdown */}
+                  <View style={styles.inputContainer}>
+                    <DropDownPicker
+                      open={open}
+                      value={hospitalId}
+                      items={hospitalItems}
+                      setOpen={setOpen}
+                      setValue={(callback) => {
+                        const value = callback(hospitalId);
+                        handleHospitalChange(value);
+                      }}
+                      setItems={setHospitalItems}
+                      placeholder={t('select_hospital')}
+                      loading={loadingHospitals}
+                      style={[
+                        styles.dropdown,
+                        hospitalError ? styles.dropdownError : null
+                      ]}
+                      dropDownContainerStyle={styles.dropdownContainer}
+                      textStyle={styles.dropdownText}
+                      placeholderStyle={styles.dropdownPlaceholder}
+                      listMode="SCROLLVIEW"
+                      scrollViewProps={{
+                        nestedScrollEnabled: true,
+                      }}
+                      zIndex={1000}
+                      zIndexInverse={1000}
+                    />
+                    {hospitalError ? (
+                      <Text style={styles.errorText}>{hospitalError}</Text>
+                    ) : null}
+                  </View>
+
+                  {/* Login Button */}
+                  <Button
+                    mode="contained"
+                    onPress={handleLogin}
+                    loading={loading}
+                    disabled={loading}
+                    style={styles.loginButton}
+                    contentStyle={styles.buttonContent}
+                    labelStyle={styles.buttonLabel}
+                  >
+                    {loading ? t('logging_in') : t('login')}
+                  </Button>
+
+                  {/* Register Link */}
+                  <TouchableOpacity 
+                    onPress={handleRegister}
+                    style={styles.registerContainer}
+                  >
+                    <Text style={styles.registerText}>
+                      {t('dont_have_account')}{' '}
+                      <Text style={styles.registerLink}>{t('register')}</Text>
+                    </Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => { i18n.locale = 'en'; forceUpdate(); }} style={{ marginHorizontal: 8 }}>
-                    <Text style={{ color: i18n.locale === 'en' ? '#1976d2' : '#888', fontWeight: 'bold', fontSize: width * 0.04 }}>{t('english')}</Text>
-                  </TouchableOpacity>
-                </View>
-                <TouchableOpacity 
-                  style={[styles.button, { width: '90%', alignSelf: 'center' }, loading && styles.buttonDisabled]} 
-                  onPress={handleLogin} 
-                  activeOpacity={0.85}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <>
-                      <MaterialCommunityIcons name="login" size={width * 0.07} color="#fff" style={{ marginEnd: 8 }} />
-                      <Text style={[styles.buttonText, { fontSize: width * 0.045 }]}>{t('login_button')}</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
-              <TouchableOpacity
-                style={{ marginTop: 24, alignSelf: 'center' }}
-                onPress={() => navigation.navigate('Register')}
-              >
-                <Text style={{ color: COLORS.primary, fontWeight: 'bold', fontSize: width * 0.045 }}>{t('register')}</Text>
-              </TouchableOpacity>
-            </View>
-          </KeyboardAvoidingView>
-        </TouchableWithoutFeedback>
+                </Card.Content>
+              </Card>
+            </ScrollView>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </LinearGradient>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  gradient: { flex: 1 },
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: SIZES.padding },
+  container: {
+    flex: 1,
+  },
+  gradient: {
+    flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: SIZES.spacing.lg,
+    paddingVertical: SIZES.spacing.xl,
+  },
   header: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: SIZES.spacing.xxl,
+    marginTop: SIZES.spacing.xl,
   },
   logoContainer: {
     width: 80,
     height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: SIZES.radius.round,
+    backgroundColor: COLORS.card,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    marginBottom: SIZES.spacing.lg,
   },
-  brandTitle: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: COLORS.white,
-    marginBottom: 8,
+  title: {
+    fontSize: SIZES.largeTitle,
+    fontWeight: '700' as const,
+    color: COLORS.textInverse,
+    marginBottom: SIZES.spacing.sm,
   },
-  brandSubtitle: {
-    fontSize: 18,
-    color: COLORS.white,
-    marginBottom: 4,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  brandDescription: {
-    fontSize: 16,
-    color: COLORS.white,
+  subtitle: {
+    fontSize: SIZES.lg,
+    color: COLORS.textInverse,
     opacity: 0.9,
     textAlign: 'center',
   },
-  card: {
+  formCard: {
     backgroundColor: COLORS.card,
-    borderRadius: SIZES.radius,
-    padding: 28,
-    width: '100%',
-    maxWidth: 370,
-    ...SHADOW,
-    alignItems: 'center',
+    borderRadius: SIZES.radius.lg,
+    ...SHADOW.light.large,
   },
-  title: { fontSize: SIZES.title + 2, fontWeight: 'bold', color: COLORS.primary, marginBottom: 24 },
+  formContent: {
+    padding: SIZES.spacing.lg,
+  },
+  formTitle: {
+    fontSize: SIZES.title,
+    fontWeight: '700' as const,
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: SIZES.spacing.lg,
+  },
+  inputContainer: {
+    marginBottom: SIZES.spacing.md,
+  },
   input: {
-    width: '100%',
-    height: 48,
-    borderColor: COLORS.border,
-    borderWidth: 1.2,
-    borderRadius: SIZES.radius,
-    marginBottom: 16,
-    paddingHorizontal: 12,
-    fontSize: SIZES.text,
-    backgroundColor: '#f7fafd',
+    backgroundColor: COLORS.input,
+    fontSize: SIZES.md,
+  },
+  dropdown: {
+    backgroundColor: COLORS.input,
+    borderColor: COLORS.inputBorder,
+    borderWidth: 1,
+    borderRadius: SIZES.radius.sm,
+    minHeight: SIZES.input.md,
+  } as any,
+  dropdownError: {
+    borderColor: COLORS.error,
+  } as any,
+  dropdownContainer: {
+    backgroundColor: COLORS.input,
+    borderColor: COLORS.inputBorder,
+    borderWidth: 1,
+    borderRadius: SIZES.radius.sm,
+    maxHeight: 200,
+  } as any,
+  dropdownText: {
+    fontSize: SIZES.md,
     color: COLORS.text,
-  },
-  label: {
-    fontSize: SIZES.text,
-    color: COLORS.text,
-    marginBottom: 8,
-    fontWeight: '500',
-    alignSelf: 'flex-start',
-    marginLeft: 10,
-  },
-  pickerContainer: {
-    width: '100%',
-    marginBottom: 16,
-  },
-  pickerLabel: {
-    fontSize: SIZES.text,
-    color: COLORS.text,
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  pickerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    height: 48,
-    borderColor: COLORS.border,
-    borderWidth: 1.2,
-    borderRadius: SIZES.radius,
-    paddingHorizontal: 12,
-    backgroundColor: '#f7fafd',
-  },
-  pickerText: {
-    fontSize: SIZES.text,
-    color: COLORS.text,
-    flex: 1,
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  } as any,
+  dropdownPlaceholder: {
+    color: COLORS.textSecondary,
+  } as any,
+  errorText: {
+    color: COLORS.error,
+    fontSize: SIZES.sm,
+    marginTop: SIZES.spacing.xs,
+    marginLeft: SIZES.spacing.sm,
+  } as any,
+  loginButton: {
     backgroundColor: COLORS.primary,
-    borderRadius: SIZES.radius,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    marginTop: 12,
-    width: '100%',
-    justifyContent: 'center',
-    ...SHADOW,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: { color: '#fff', fontSize: SIZES.button, fontWeight: 'bold' },
+    borderRadius: SIZES.radius.md,
+    marginTop: SIZES.spacing.lg,
+    ...SHADOW.light.medium,
+  } as any,
+  buttonContent: {
+    height: SIZES.button.lg,
+  } as any,
+  buttonLabel: {
+    fontSize: SIZES.lg,
+    fontWeight: '600' as const,
+  } as any,
+  registerContainer: {
+    marginTop: SIZES.spacing.lg,
+    alignItems: 'center',
+  } as any,
+  registerText: {
+    fontSize: SIZES.md,
+    color: COLORS.textSecondary,
+  } as any,
+  registerLink: {
+    color: COLORS.primary,
+    fontWeight: '600' as const,
+  } as any,
 });
 
 export default LoginScreen;
